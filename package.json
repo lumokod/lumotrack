@@ -1,7 +1,9 @@
 {
-  "name": "shipments",
+  "name": "lumotrack",
   "scripts": {
-    "dev": "bun run --hot src/index.ts"
+    "dev": "bun run --hot src/core/index.ts",
+    "generate": "npx drizzle-kit generate --config ./drizzle.config.ts",
+    "migrate": "npx drizzle-kit migrate --config ./drizzle.config.ts"
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "^1.6.11",
