@@ -9,7 +9,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 
-import { USER_TYPES } from "@/features/auth/auth.validations";
+import { USER_TYPES } from "@/features/auth/auth.validation";
 
 export const userTypeEnum = pgEnum("user_type", USER_TYPES);
 

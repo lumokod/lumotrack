@@ -1,7 +1,7 @@
 {
   "name": "lumotrack",
   "scripts": {
-    "dev": "bun run --hot src/core/index.ts",
+    "dev": "bun run --hot src/index.ts",
     "generate": "npx drizzle-kit generate --config ./drizzle.config.ts",
     "migrate": "npx drizzle-kit migrate --config ./drizzle.config.ts"
   },

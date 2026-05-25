@@ -4,7 +4,7 @@ import * as schema from "@/db/schema";
 import { organization, admin, openAPI } from "better-auth/plugins";
 import { db } from "@/db";
 import { env } from "@/core/env";
-import { userFields } from "@/features/auth/auth.validations";
+import { userFields } from "@/features/auth/auth.validation";
 
 export const auth = betterAuth({
   secret: env.BETTER_AUTH_SECRET,
