@@ -15,6 +15,13 @@
       "when": 1779692372367,
       "tag": "0001_tiny_freak",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779734519697,
+      "tag": "0002_dry_hobgoblin",
+      "breakpoints": true
     }
   ]
 }

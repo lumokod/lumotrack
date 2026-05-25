@@ -1,9 +1,10 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import * as schema from "@/db/schema";
-import { organization, admin } from "better-auth/plugins";
+import { organization, admin, openAPI } from "better-auth/plugins";
 import { db } from "@/db";
 import { env } from "@/core/env";
+import { userFields } from "@/features/auth/auth.validations";
 
 export const auth = betterAuth({
   secret: env.BETTER_AUTH_SECRET,
@@ -15,5 +16,8 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
   },
-  plugins: [organization(), admin()],
+  user: {
+    additionalFields: userFields,
+  },
+  plugins: [organization(), admin(), openAPI()],
 });

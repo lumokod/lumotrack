@@ -1,12 +1,17 @@
 import { relations } from "drizzle-orm";
 import {
   pgTable,
+  pgEnum,
   text,
   timestamp,
   boolean,
   index,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+
+import { USER_TYPES } from "@/features/auth/auth.validations";
+
+export const userTypeEnum = pgEnum("user_type", USER_TYPES);
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -20,6 +25,7 @@ export const user = pgTable("user", {
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
   role: text("role"),
+  userType: userTypeEnum("user_type"),
   banned: boolean("banned").default(false),
   banReason: text("ban_reason"),
   banExpires: timestamp("ban_expires"),
