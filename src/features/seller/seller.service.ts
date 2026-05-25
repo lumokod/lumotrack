@@ -3,7 +3,11 @@ import { db } from "@/db";
 import { sellers, user } from "@/db/schema";
 import { HTTPException } from "hono/http-exception";
 
-export async function registerSeller(userId: string) {
+export async function registerSeller(userId: string, userType: string | null | undefined) {
+  if (userType) {
+    throw new HTTPException(409, { message: "User already has a role assigned" });
+  }
+
   const [existing] = await db
     .select()
     .from(sellers)

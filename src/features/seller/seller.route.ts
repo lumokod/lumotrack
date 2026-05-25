@@ -11,7 +11,7 @@ sellerRoutes.post("/register", async (c) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  const result = await registerSeller(session.user.id);
+  const result = await registerSeller(session.user.id, session.user.userType);
 
   return c.json(result, 201);
 });
