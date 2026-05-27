@@ -3,7 +3,8 @@
   "scripts": {
     "dev": "bun run --hot src/index.ts",
     "generate": "npx drizzle-kit generate --config ./drizzle.config.ts",
-    "migrate": "npx drizzle-kit migrate --config ./drizzle.config.ts"
+    "migrate": "npx drizzle-kit migrate --config ./drizzle.config.ts",
+    "start": "bun run src/index.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.79",
