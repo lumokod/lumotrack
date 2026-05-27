@@ -9,7 +9,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 
-export const userTypeEnum = pgEnum("user_type", ["seller", "delivery_partner"]);
+export const userTypeEnum = pgEnum("user_type", ["seller", "driver"]);
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),

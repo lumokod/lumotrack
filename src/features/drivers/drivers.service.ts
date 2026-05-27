@@ -1,14 +1,14 @@
 import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { db } from "@/core/db";
-import { deliveryPartners, deliveryPartnerLocations, user } from "@/db/schema";
+import { drivers, driverLocations, user } from "@/db/schema";
 import type { DriverLocationCreate } from "./drivers.types";
 
 export async function getDriver(userId: string) {
   const [driver] = await db
     .select()
-    .from(deliveryPartners)
-    .where(eq(deliveryPartners.userId, userId))
+    .from(drivers)
+    .where(eq(drivers.userId, userId))
     .limit(1);
   if (!driver) {
     throw new HTTPException(404, { message: "Driver profile not found" });
@@ -28,24 +28,21 @@ export async function registerDeliveryPartner(
 
   const [existing] = await db
     .select()
-    .from(deliveryPartners)
-    .where(eq(deliveryPartners.userId, userId))
+    .from(drivers)
+    .where(eq(drivers.userId, userId))
     .limit(1);
 
   if (existing) {
     throw new HTTPException(409, {
-      message: "Already registered as a delivery partner",
+      message: "Already registered as a driver",
     });
   }
 
-  const { deliveryPartner, updatedUser } = await db.transaction(async (tx) => {
-    const [newPartner] = await tx
-      .insert(deliveryPartners)
-      .values({ userId })
-      .returning();
+  const { driver, updatedUser } = await db.transaction(async (tx) => {
+    const [newDriver] = await tx.insert(drivers).values({ userId }).returning();
     const [updatedUser] = await tx
       .update(user)
-      .set({ userType: "delivery_partner" })
+      .set({ userType: "driver" })
       .where(eq(user.id, userId))
       .returning({
         id: user.id,
@@ -54,10 +51,10 @@ export async function registerDeliveryPartner(
         image: user.image,
         userType: user.userType,
       });
-    return { deliveryPartner: newPartner, updatedUser };
+    return { driver: newDriver, updatedUser };
   });
 
-  return { deliveryPartner, user: updatedUser };
+  return { driver, user: updatedUser };
 }
 
 export async function addLocation(
@@ -65,9 +62,9 @@ export async function addLocation(
   data: DriverLocationCreate,
 ) {
   const [location] = await db
-    .insert(deliveryPartnerLocations)
+    .insert(driverLocations)
     .values({
-      deliveryPartnerId: driverId,
+      driverId: driverId,
       location: { x: data.longitude, y: data.latitude },
       label: data.label,
     })
@@ -78,11 +75,11 @@ export async function addLocation(
 export async function removeLocation(driverId: string, locationId: string) {
   const [existing] = await db
     .select()
-    .from(deliveryPartnerLocations)
+    .from(driverLocations)
     .where(
       and(
-        eq(deliveryPartnerLocations.id, locationId),
-        eq(deliveryPartnerLocations.deliveryPartnerId, driverId),
+        eq(driverLocations.id, locationId),
+        eq(driverLocations.driverId, driverId),
       ),
     )
     .limit(1);
@@ -92,11 +89,11 @@ export async function removeLocation(driverId: string, locationId: string) {
   }
 
   const [deleted] = await db
-    .delete(deliveryPartnerLocations)
+    .delete(driverLocations)
     .where(
       and(
-        eq(deliveryPartnerLocations.id, locationId),
-        eq(deliveryPartnerLocations.deliveryPartnerId, driverId),
+        eq(driverLocations.id, locationId),
+        eq(driverLocations.driverId, driverId),
       ),
     )
     .returning();
