@@ -1,10 +1,10 @@
 import { Hono } from "hono";
 import { auth } from "@/lib/auth";
-import { registerSeller } from "./seller.service";
+import { registerSeller } from "./sellers.service";
 
-export const sellerRoutes = new Hono();
+export const sellersRoutes = new Hono();
 
-sellerRoutes.post("/register", async (c) => {
+sellersRoutes.post("/register", async (c) => {
   const session = await auth.api.getSession({ headers: c.req.raw.headers });
 
   if (!session) {

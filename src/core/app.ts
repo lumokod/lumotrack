@@ -1,14 +1,16 @@
 import { Hono } from "hono";
 import { authRoutes } from "../features/auth/auth.route";
-import { sellerRoutes } from "../features/seller/seller.route";
-import { deliveryPartnerRoutes } from "../features/delivery-partner/delivery-partner.route";
+import { sellersRoutes } from "../features/sellers/sellers.route";
+import { driversRoutes } from "../features/drivers/drivers.route";
+import { shipmentsRoutes } from "../features/shipments/shipments.route";
 import { HTTPException } from "hono/http-exception";
 
 const app = new Hono();
 
 app.route("/api/auth", authRoutes);
-app.route("/api/seller", sellerRoutes);
-app.route("/api/delivery-partner", deliveryPartnerRoutes);
+app.route("/api/sellers", sellersRoutes);
+app.route("/api/drivers", driversRoutes);
+app.route("/api/shipments", shipmentsRoutes);
 
 app.get("/", (c) => c.text("Hello Hono!"));
 
