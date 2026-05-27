@@ -1,24 +1,14 @@
 import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
-import { auth } from "@/lib/auth";
 import { db } from "@/core/db";
 import { deliveryPartners, deliveryPartnerLocations, user } from "@/db/schema";
 import type { DriverLocationCreate } from "./drivers.types";
 
-export async function getDriverFromSession(headers: Headers) {
-  const session = await auth.api.getSession({ headers });
-  if (!session) {
-    throw new HTTPException(401, { message: "Unauthorized" });
-  }
-  if (session.user.userType !== "delivery_partner") {
-    throw new HTTPException(403, {
-      message: "Only drivers can access this resource",
-    });
-  }
+export async function getDriver(userId: string) {
   const [driver] = await db
     .select()
     .from(deliveryPartners)
-    .where(eq(deliveryPartners.userId, session.user.id))
+    .where(eq(deliveryPartners.userId, userId))
     .limit(1);
   if (!driver) {
     throw new HTTPException(404, { message: "Driver profile not found" });

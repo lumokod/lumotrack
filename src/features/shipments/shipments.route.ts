@@ -1,9 +1,6 @@
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
-import { eq } from "drizzle-orm";
-import { auth } from "@/lib/auth";
-import { db } from "@/core/db";
-import { sellers, shipmentStatusEnum } from "@/db/schema";
+import { shipmentStatusEnum } from "@/db/schema";
 import {
   getAllShipments,
   getShipmentById,
@@ -17,38 +14,27 @@ import {
   updateShipmentSchema,
 } from "./shipments.validation";
 import type { ShipmentStatus } from "./shipments.types";
+import {
+  sessionMiddleware,
+  requireUserType,
+  type AppEnv,
+} from "@/shared/middleware/auth.middleware";
+import { getSeller } from "@/features/sellers/sellers.service";
 
-export const shipmentsRoutes = new Hono();
+export const shipmentsRoutes = new Hono<AppEnv>();
 
-async function getSellerFromSession(headers: Headers) {
-  const session = await auth.api.getSession({ headers });
-  if (!session) {
-    throw new HTTPException(401, { message: "Unauthorized" });
-  }
-  if (session.user.userType !== "seller") {
-    throw new HTTPException(403, {
-      message: "Only sellers can access shipments",
-    });
-  }
-  const [seller] = await db
-    .select()
-    .from(sellers)
-    .where(eq(sellers.userId, session.user.id))
-    .limit(1);
-  if (!seller) {
-    throw new HTTPException(404, { message: "Seller profile not found" });
-  }
-  return seller;
-}
+shipmentsRoutes.use(sessionMiddleware);
+shipmentsRoutes.use(requireUserType("seller"));
 
 shipmentsRoutes.get("/", async (c) => {
-  const seller = await getSellerFromSession(c.req.raw.headers);
+  const user = c.get("user");
+  const seller = await getSeller(user.id);
   const result = await getAllShipments(seller.id);
   return c.json(result);
 });
 
 shipmentsRoutes.get("/status/:status", async (c) => {
-  const seller = await getSellerFromSession(c.req.raw.headers);
+  const user = c.get("user");
   const statusParam = c.req.param("status");
 
   if (!(shipmentStatusEnum.enumValues as string[]).includes(statusParam)) {
@@ -57,6 +43,7 @@ shipmentsRoutes.get("/status/:status", async (c) => {
     });
   }
 
+  const seller = await getSeller(user.id);
   const result = await getShipmentsByStatus(
     statusParam as ShipmentStatus,
     seller.id,
@@ -65,7 +52,8 @@ shipmentsRoutes.get("/status/:status", async (c) => {
 });
 
 shipmentsRoutes.get("/:id", async (c) => {
-  const seller = await getSellerFromSession(c.req.raw.headers);
+  const user = c.get("user");
+  const seller = await getSeller(user.id);
   const shipment = await getShipmentById(c.req.param("id"), seller.id);
   if (!shipment) {
     throw new HTTPException(404, { message: "Shipment not found" });
@@ -74,7 +62,8 @@ shipmentsRoutes.get("/:id", async (c) => {
 });
 
 shipmentsRoutes.post("/", async (c) => {
-  const seller = await getSellerFromSession(c.req.raw.headers);
+  const user = c.get("user");
+  const seller = await getSeller(user.id);
   const body = createShipmentSchema.parse(await c.req.json());
   const shipment = await createShipment(
     {
@@ -90,9 +79,9 @@ shipmentsRoutes.post("/", async (c) => {
 });
 
 shipmentsRoutes.patch("/:id", async (c) => {
-  const seller = await getSellerFromSession(c.req.raw.headers);
+  const user = c.get("user");
+  const seller = await getSeller(user.id);
   const body = updateShipmentSchema.parse(await c.req.json());
-
   const shipment = await updateShipment(c.req.param("id"), body, seller.id);
   if (!shipment) {
     throw new HTTPException(404, { message: "Shipment not found" });
@@ -101,7 +90,8 @@ shipmentsRoutes.patch("/:id", async (c) => {
 });
 
 shipmentsRoutes.delete("/:id", async (c) => {
-  const seller = await getSellerFromSession(c.req.raw.headers);
+  const user = c.get("user");
+  const seller = await getSeller(user.id);
   const shipment = await deleteShipment(c.req.param("id"), seller.id);
   if (!shipment) {
     throw new HTTPException(404, { message: "Shipment not found" });

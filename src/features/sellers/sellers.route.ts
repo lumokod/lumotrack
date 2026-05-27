@@ -1,17 +1,13 @@
 import { Hono } from "hono";
-import { auth } from "@/lib/auth";
+import { sessionMiddleware, type AppEnv } from "@/shared/middleware/auth.middleware";
 import { registerSeller } from "./sellers.service";
 
-export const sellersRoutes = new Hono();
+export const sellersRoutes = new Hono<AppEnv>();
+
+sellersRoutes.use(sessionMiddleware);
 
 sellersRoutes.post("/register", async (c) => {
-  const session = await auth.api.getSession({ headers: c.req.raw.headers });
-
-  if (!session) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-
-  const result = await registerSeller(session.user.id, session.user.userType);
-
+  const user = c.get("user");
+  const result = await registerSeller(user.id, user.userType);
   return c.json(result, 201);
 });

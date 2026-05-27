@@ -2,20 +2,12 @@ import { eq } from "drizzle-orm";
 import { db } from "@/core/db";
 import { sellers, user } from "@/db/schema";
 import { HTTPException } from "hono/http-exception";
-import { auth } from "@/lib/auth";
 
-export async function getSellerFromSession(headers: Headers) {
-  const session = await auth.api.getSession({ headers });
-  if (!session) {
-    throw new HTTPException(401, { message: "Unauthorized" });
-  }
-  if (session.user.userType !== "seller") {
-    throw new HTTPException(403, { message: "Only sellers can access this resource" });
-  }
+export async function getSeller(userId: string) {
   const [seller] = await db
     .select()
     .from(sellers)
-    .where(eq(sellers.userId, session.user.id))
+    .where(eq(sellers.userId, userId))
     .limit(1);
   if (!seller) {
     throw new HTTPException(404, { message: "Seller profile not found" });
