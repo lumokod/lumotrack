@@ -30,5 +30,7 @@ export const updateShipmentSchema = z
     { message: "longitude and latitude must be provided together" },
   );
 
+export const shipmentStatusSchema = z.enum(shipmentStatusEnum.enumValues);
+
 export type CreateShipmentInput = z.infer<typeof createShipmentSchema>;
 export type UpdateShipmentInput = z.infer<typeof updateShipmentSchema>;
