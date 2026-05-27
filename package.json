@@ -6,6 +6,7 @@
     "migrate": "npx drizzle-kit migrate --config ./drizzle.config.ts"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.79",
     "@better-auth/drizzle-adapter": "^1.6.11",
     "ai": "^6.0.191",
     "better-auth": "^1.6.11",
@@ -20,6 +21,7 @@
     "@types/bun": "latest",
     "@types/pg": "^8.20.0",
     "drizzle-kit": "^0.31.10",
-    "tsx": "^4.22.3"
+    "tsx": "^4.22.3",
+    "typescript": "^6.0.3"
   }
 }

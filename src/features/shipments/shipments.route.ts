@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
-import { db } from "@/db";
+import { db } from "@/core/db";
 import { sellers, shipmentStatusEnum } from "@/db/schema";
 import {
   getAllShipments,
@@ -12,6 +12,10 @@ import {
   updateShipment,
   deleteShipment,
 } from "./shipments.service";
+import {
+  createShipmentSchema,
+  updateShipmentSchema,
+} from "./shipments.validation";
 import type { ShipmentStatus } from "./shipments.types";
 
 export const shipmentsRoutes = new Hono();
@@ -22,7 +26,9 @@ async function getSellerFromSession(headers: Headers) {
     throw new HTTPException(401, { message: "Unauthorized" });
   }
   if (session.user.userType !== "seller") {
-    throw new HTTPException(403, { message: "Only sellers can access shipments" });
+    throw new HTTPException(403, {
+      message: "Only sellers can access shipments",
+    });
   }
   const [seller] = await db
     .select()
@@ -51,7 +57,10 @@ shipmentsRoutes.get("/status/:status", async (c) => {
     });
   }
 
-  const result = await getShipmentsByStatus(statusParam as ShipmentStatus, seller.id);
+  const result = await getShipmentsByStatus(
+    statusParam as ShipmentStatus,
+    seller.id,
+  );
   return c.json(result);
 });
 
@@ -66,12 +75,14 @@ shipmentsRoutes.get("/:id", async (c) => {
 
 shipmentsRoutes.post("/", async (c) => {
   const seller = await getSellerFromSession(c.req.raw.headers);
-  const body = await c.req.json<{ longitude: number; latitude: number; estimatedDelivery: string }>();
+  const body = createShipmentSchema.parse(await c.req.json());
   const shipment = await createShipment(
     {
       longitude: body.longitude,
       latitude: body.latitude,
-      estimatedDelivery: new Date(body.estimatedDelivery),
+      content: body.content,
+      weight: body.weight,
+      estimatedDelivery: body.estimatedDelivery,
     },
     seller.id,
   );
@@ -80,25 +91,9 @@ shipmentsRoutes.post("/", async (c) => {
 
 shipmentsRoutes.patch("/:id", async (c) => {
   const seller = await getSellerFromSession(c.req.raw.headers);
-  const body = await c.req.json<{
-    longitude?: number;
-    latitude?: number;
-    estimatedDelivery?: string;
-    status?: ShipmentStatus;
-  }>();
+  const body = updateShipmentSchema.parse(await c.req.json());
 
-  const shipment = await updateShipment(
-    c.req.param("id"),
-    {
-      ...(body.longitude !== undefined && { longitude: body.longitude }),
-      ...(body.latitude !== undefined && { latitude: body.latitude }),
-      ...(body.estimatedDelivery !== undefined && {
-        estimatedDelivery: new Date(body.estimatedDelivery),
-      }),
-      ...(body.status !== undefined && { status: body.status }),
-    },
-    seller.id,
-  );
+  const shipment = await updateShipment(c.req.param("id"), body, seller.id);
   if (!shipment) {
     throw new HTTPException(404, { message: "Shipment not found" });
   }

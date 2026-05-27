@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { auth } from "@/lib/auth";
-import { db } from "@/db";
+import { db } from "@/core/db";
 import { deliveryPartners, deliveryPartnerLocations, user } from "@/db/schema";
 import type { DriverLocationCreate } from "./drivers.types";
 
@@ -11,7 +11,9 @@ export async function getDriverFromSession(headers: Headers) {
     throw new HTTPException(401, { message: "Unauthorized" });
   }
   if (session.user.userType !== "delivery_partner") {
-    throw new HTTPException(403, { message: "Only drivers can access this resource" });
+    throw new HTTPException(403, {
+      message: "Only drivers can access this resource",
+    });
   }
   const [driver] = await db
     .select()
@@ -24,9 +26,14 @@ export async function getDriverFromSession(headers: Headers) {
   return driver;
 }
 
-export async function registerDeliveryPartner(userId: string, userType: string | null | undefined) {
+export async function registerDeliveryPartner(
+  userId: string,
+  userType: string | null | undefined,
+) {
   if (userType) {
-    throw new HTTPException(409, { message: "User already has a role assigned" });
+    throw new HTTPException(409, {
+      message: "User already has a role assigned",
+    });
   }
 
   const [existing] = await db
@@ -36,23 +43,37 @@ export async function registerDeliveryPartner(userId: string, userType: string |
     .limit(1);
 
   if (existing) {
-    throw new HTTPException(409, { message: "Already registered as a delivery partner" });
+    throw new HTTPException(409, {
+      message: "Already registered as a delivery partner",
+    });
   }
 
   const { deliveryPartner, updatedUser } = await db.transaction(async (tx) => {
-    const [newPartner] = await tx.insert(deliveryPartners).values({ userId }).returning();
+    const [newPartner] = await tx
+      .insert(deliveryPartners)
+      .values({ userId })
+      .returning();
     const [updatedUser] = await tx
       .update(user)
       .set({ userType: "delivery_partner" })
       .where(eq(user.id, userId))
-      .returning({ id: user.id, name: user.name, email: user.email, image: user.image, userType: user.userType });
+      .returning({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        image: user.image,
+        userType: user.userType,
+      });
     return { deliveryPartner: newPartner, updatedUser };
   });
 
   return { deliveryPartner, user: updatedUser };
 }
 
-export async function addLocation(driverId: string, data: DriverLocationCreate) {
+export async function addLocation(
+  driverId: string,
+  data: DriverLocationCreate,
+) {
   const [location] = await db
     .insert(deliveryPartnerLocations)
     .values({

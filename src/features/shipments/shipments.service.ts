@@ -1,7 +1,11 @@
 import { and, eq } from "drizzle-orm";
-import { db } from "@/db";
+import { db } from "@/core/db";
 import { shipments } from "@/db/schema";
-import type { ShipmentCreate, ShipmentStatus, ShipmentUpdate } from "./shipments.types";
+import type {
+  ShipmentCreate,
+  ShipmentStatus,
+  ShipmentUpdate,
+} from "./shipments.types";
 
 export async function getAllShipments(sellerId: string) {
   return db.select().from(shipments).where(eq(shipments.sellerId, sellerId));
@@ -16,7 +20,10 @@ export async function getShipmentById(shipmentId: string, sellerId: string) {
   return shipment ?? null;
 }
 
-export async function getShipmentsByStatus(status: ShipmentStatus, sellerId: string) {
+export async function getShipmentsByStatus(
+  status: ShipmentStatus,
+  sellerId: string,
+) {
   return db
     .select()
     .from(shipments)
@@ -28,6 +35,8 @@ export async function createShipment(data: ShipmentCreate, sellerId: string) {
     .insert(shipments)
     .values({
       destination: { x: data.longitude, y: data.latitude },
+      content: data.content,
+      weight: data.weight,
       estimatedDelivery: data.estimatedDelivery,
       sellerId,
     })
@@ -46,6 +55,12 @@ export async function updateShipment(
   const updateData: Partial<typeof shipments.$inferInsert> = {};
   if (data.longitude !== undefined && data.latitude !== undefined) {
     updateData.destination = { x: data.longitude, y: data.latitude };
+  }
+  if (data.content !== undefined) {
+    updateData.content = data.content;
+  }
+  if (data.weight !== undefined) {
+    updateData.weight = data.weight;
   }
   if (data.estimatedDelivery !== undefined) {
     updateData.estimatedDelivery = data.estimatedDelivery;

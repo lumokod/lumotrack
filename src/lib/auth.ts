@@ -2,7 +2,7 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import * as schema from "@/db/schema";
 import { organization, admin, openAPI } from "better-auth/plugins";
-import { db } from "@/db";
+import { db } from "@/core/db";
 import { env } from "@/core/env";
 import { userFields } from "@/features/auth/auth.validation";
 

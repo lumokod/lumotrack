@@ -22,6 +22,13 @@
       "when": 1779734519697,
       "tag": "0002_dry_hobgoblin",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1779843634869,
+      "tag": "0003_solid_omega_red",
+      "breakpoints": true
     }
   ]
 }

@@ -6,6 +6,8 @@ import {
   pgEnum,
   geometry,
   index,
+  varchar,
+  real,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { sellers } from "./sellers.schema";
@@ -24,6 +26,8 @@ export const shipments = pgTable("shipments", {
     .primaryKey()
     .$defaultFn(() => uuidv7()),
   status: shipmentStatusEnum().notNull().default("created"),
+  content: varchar({ length: 100 }).notNull(),
+  weight: real().notNull(),
   estimatedDelivery: timestamp("estimated_delivery", {
     withTimezone: true,
   }).notNull(),

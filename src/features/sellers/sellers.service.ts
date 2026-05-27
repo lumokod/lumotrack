@@ -1,11 +1,36 @@
 import { eq } from "drizzle-orm";
-import { db } from "@/db";
+import { db } from "@/core/db";
 import { sellers, user } from "@/db/schema";
 import { HTTPException } from "hono/http-exception";
+import { auth } from "@/lib/auth";
 
-export async function registerSeller(userId: string, userType: string | null | undefined) {
+export async function getSellerFromSession(headers: Headers) {
+  const session = await auth.api.getSession({ headers });
+  if (!session) {
+    throw new HTTPException(401, { message: "Unauthorized" });
+  }
+  if (session.user.userType !== "seller") {
+    throw new HTTPException(403, { message: "Only sellers can access this resource" });
+  }
+  const [seller] = await db
+    .select()
+    .from(sellers)
+    .where(eq(sellers.userId, session.user.id))
+    .limit(1);
+  if (!seller) {
+    throw new HTTPException(404, { message: "Seller profile not found" });
+  }
+  return seller;
+}
+
+export async function registerSeller(
+  userId: string,
+  userType: string | null | undefined,
+) {
   if (userType) {
-    throw new HTTPException(409, { message: "User already has a role assigned" });
+    throw new HTTPException(409, {
+      message: "User already has a role assigned",
+    });
   }
 
   const [existing] = await db
