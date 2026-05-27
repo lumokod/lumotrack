@@ -6,6 +6,7 @@ import type {
   ShipmentStatus,
   ShipmentUpdate,
 } from "./shipments.types";
+import { HTTPException } from "hono/http-exception";
 
 export async function getAllShipments(sellerId: string) {
   return db.select().from(shipments).where(eq(shipments.sellerId, sellerId));
@@ -79,11 +80,12 @@ export async function updateShipment(
 
 export async function deleteShipment(shipmentId: string, sellerId: string) {
   const existing = await getShipmentById(shipmentId, sellerId);
-  if (!existing) return null;
 
-  const [deleted] = await db
+  if (!existing) {
+    throw new HTTPException(404, { message: "Shipment not found" });
+  }
+
+  await db
     .delete(shipments)
-    .where(and(eq(shipments.id, shipmentId), eq(shipments.sellerId, sellerId)))
-    .returning();
-  return deleted;
+    .where(and(eq(shipments.id, shipmentId), eq(shipments.sellerId, sellerId)));
 }

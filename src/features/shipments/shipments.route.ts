@@ -106,9 +106,7 @@ shipmentsRoutes.delete("/:id", sValidator("param", z.uuidv7()), async (c) => {
   const id = c.req.valid("param");
   const user = c.get("user");
   const seller = await getSeller(user.id);
-  const shipment = await deleteShipment(id, seller.id);
-  if (!shipment) {
-    throw new HTTPException(404, { message: "Shipment not found" });
-  }
-  return c.json(shipment);
+  await deleteShipment(id, seller.id);
+
+  return c.json({ message: "Shipment deleted successfully" });
 });
