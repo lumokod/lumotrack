@@ -31,6 +31,7 @@ src/
     drivers/
     sellers/
     shipments/
+    events/
     ai/
   lib/            # auth.ts — Better Auth configuration
   shared/
@@ -73,6 +74,7 @@ All routes are prefixed `/api`. Protected routes require a valid session (via `s
 | `/api/sellers` | session | POST /register |
 | `/api/drivers` | session | POST /register, /me/locations CRUD |
 | `/api/shipments` | session + seller | Full CRUD + pagination + status filter |
+| `/api/shipments/:id/events` | session | POST (driver) — log checkpoint; GET (seller) — view timeline |
 | `/api/ai` | session + seller | POST /chat — AI shipment assistant |
 
 ## Database Schema
@@ -80,9 +82,17 @@ All routes are prefixed `/api`. Protected routes require a valid session (via `s
 - **auth tables** (`auth.schema.ts`) — user, session, account, verification, organization, member, invitation
 - **drivers** (`drivers.schema.ts`) — `drivers` + `driverLocations` (PostGIS POINT geometry, SRID 4326)
 - **sellers** (`sellers.schema.ts`) — `sellers`
-- **shipments** (`shipments.schema.ts`) — `shipments` with PostGIS destination, status enum (`created | assigned | in_transit | delivered | cancelled`)
+- **addresses** (`addresses.schema.ts`) — seller addresses; `street`, `city`, `country` are required; `state` and `zipCode` are nullable; FK to sellers with cascade delete
+- **shipments** (`shipments.schema.ts`) — `shipments` with PostGIS `destination` (coords for live tracking + reverse geocoding on frontend), nullable `originAddressId` FK to addresses (assigned after creation), status enum (`created | assigned | picked_up | in_transit | out_for_delivery | delivered | cancelled`)
+- **events** (`events.schema.ts`) — shipment checkpoint log; each row has `status` (own `eventStatusEnum`: `departed | arrived | delivery_attempted | held_at_facility | customs_cleared | out_for_delivery | delivered | returned`), `address` (plain text, no geometry), optional `description`, FK to shipments with cascade delete
 
-All domain entities use **uuidv7** as primary keys. Geometry columns have GiST spatial indexes.
+All domain entities use **uuidv7** as primary keys. PostGIS geometry columns (drivers, shipments) have GiST spatial indexes. Events use plain text address — no geometry needed since they are a history log, not a tracking source.
+
+### Design notes
+- Shipment `destination` stores coordinates (PostGIS). The frontend converts a typed address to coords via forward geocoding before sending to the API, and displays the address via reverse geocoding when rendering.
+- `originAddressId` on shipments is nullable — seller creates the shipment first, assigns a pickup address later.
+- Live driver tracking is done via `driverLocations` (updated in real-time), not via events.
+- Events are immutable — no update or delete endpoints.
 
 ## Code Conventions
 
