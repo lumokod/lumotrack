@@ -1,1 +1,0 @@
-ALTER TABLE "shipments" ALTER COLUMN "estimated_delivery" DROP NOT NULL;
