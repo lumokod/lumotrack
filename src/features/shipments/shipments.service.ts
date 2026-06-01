@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "@/core/db";
-import { shipments, drivers } from "@/db/schema";
+import { shipments, member } from "@/db/schema";
 import type {
   ShipmentStatus,
   CreateShipmentInput,
@@ -9,15 +9,15 @@ import type {
 import { HTTPException } from "hono/http-exception";
 import { formatShipment, paginateShipments } from "./shipments.util";
 
-export async function getAllShipments(sellerId: string, cursor?: string) {
-  return paginateShipments([eq(shipments.sellerId, sellerId)], cursor);
+export async function getAllShipments(orgId: string, cursor?: string) {
+  return paginateShipments([eq(shipments.orgId, orgId)], cursor);
 }
 
-export async function getShipmentById(shipmentId: string, sellerId: string) {
+export async function getShipmentById(shipmentId: string, orgId: string) {
   const [shipment] = await db
     .select()
     .from(shipments)
-    .where(and(eq(shipments.id, shipmentId), eq(shipments.sellerId, sellerId)))
+    .where(and(eq(shipments.id, shipmentId), eq(shipments.orgId, orgId)))
     .limit(1);
   if (!shipment) {
     throw new HTTPException(404, { message: "Shipment not found" });
@@ -27,19 +27,16 @@ export async function getShipmentById(shipmentId: string, sellerId: string) {
 
 export async function getShipmentsByStatus(
   status: ShipmentStatus,
-  sellerId: string,
+  orgId: string,
   cursor?: string,
 ) {
   return paginateShipments(
-    [eq(shipments.sellerId, sellerId), eq(shipments.status, status)],
+    [eq(shipments.orgId, orgId), eq(shipments.status, status)],
     cursor,
   );
 }
 
-export async function createShipment(
-  data: CreateShipmentInput,
-  sellerId: string,
-) {
+export async function createShipment(data: CreateShipmentInput, orgId: string) {
   const [shipment] = await db
     .insert(shipments)
     .values({
@@ -50,7 +47,7 @@ export async function createShipment(
       content: data.content,
       weight: data.weight,
       estimatedDelivery: data.estimatedDelivery,
-      sellerId,
+      orgId,
     })
     .returning();
   return formatShipment(shipment);
@@ -59,12 +56,11 @@ export async function createShipment(
 export async function updateShipment(
   shipmentId: string,
   data: UpdateShipmentInput,
-  sellerId: string,
+  orgId: string,
 ) {
-  await getShipmentById(shipmentId, sellerId);
+  await getShipmentById(shipmentId, orgId);
 
   const { destination, ...rest } = data;
-
   const updateData: Partial<typeof shipments.$inferInsert> = { ...rest };
 
   if (destination) {
@@ -77,40 +73,46 @@ export async function updateShipment(
   const [updated] = await db
     .update(shipments)
     .set(updateData)
-    .where(and(eq(shipments.id, shipmentId), eq(shipments.sellerId, sellerId)))
+    .where(and(eq(shipments.id, shipmentId), eq(shipments.orgId, orgId)))
     .returning();
   return updated ? formatShipment(updated) : null;
 }
 
-export async function deleteShipment(shipmentId: string, sellerId: string) {
-  await getShipmentById(shipmentId, sellerId);
+export async function deleteShipment(shipmentId: string, orgId: string) {
+  await getShipmentById(shipmentId, orgId);
 
   await db
     .delete(shipments)
-    .where(and(eq(shipments.id, shipmentId), eq(shipments.sellerId, sellerId)));
+    .where(and(eq(shipments.id, shipmentId), eq(shipments.orgId, orgId)));
 }
 
 export async function assignDriver(
   shipmentId: string,
-  sellerId: string,
-  driverId: string,
+  driverUserId: string,
+  orgId: string,
 ) {
-  await getShipmentById(shipmentId, sellerId);
+  await getShipmentById(shipmentId, orgId);
 
-  const [driver] = await db
+  const [driverMembership] = await db
     .select()
-    .from(drivers)
-    .where(eq(drivers.id, driverId))
+    .from(member)
+    .where(
+      and(
+        eq(member.userId, driverUserId),
+        eq(member.organizationId, orgId),
+        eq(member.role, "driver"),
+      ),
+    )
     .limit(1);
 
-  if (!driver) {
-    throw new HTTPException(404, { message: "Driver not found" });
+  if (!driverMembership) {
+    throw new HTTPException(404, { message: "Driver not found in this organization" });
   }
 
   const [updated] = await db
     .update(shipments)
-    .set({ driverId, status: "assigned" })
-    .where(and(eq(shipments.id, shipmentId), eq(shipments.sellerId, sellerId)))
+    .set({ driverUserId, status: "assigned" })
+    .where(and(eq(shipments.id, shipmentId), eq(shipments.orgId, orgId)))
     .returning();
 
   return formatShipment(updated);

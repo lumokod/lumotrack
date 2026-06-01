@@ -1,7 +1,7 @@
 import { uuidv7 } from "uuidv7";
-import { pgTable, uuid, varchar, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, varchar, timestamp } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
-import { sellers } from "./sellers.schema";
+import { organization } from "./auth.schema";
 
 export const addresses = pgTable("addresses", {
   id: uuid()
@@ -12,9 +12,9 @@ export const addresses = pgTable("addresses", {
   state: varchar({ length: 100 }),
   zipCode: varchar("zip_code", { length: 20 }),
   country: varchar({ length: 100 }).notNull(),
-  sellerId: uuid("seller_id")
+  orgId: text("org_id")
     .notNull()
-    .references(() => sellers.id, { onDelete: "cascade" }),
+    .references(() => organization.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
@@ -25,8 +25,8 @@ export const addresses = pgTable("addresses", {
 });
 
 export const addressesRelations = relations(addresses, ({ one }) => ({
-  seller: one(sellers, {
-    fields: [addresses.sellerId],
-    references: [sellers.id],
+  org: one(organization, {
+    fields: [addresses.orgId],
+    references: [organization.id],
   }),
 }));

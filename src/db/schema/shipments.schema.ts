@@ -1,6 +1,7 @@
 import { uuidv7 } from "uuidv7";
 import {
   pgTable,
+  text,
   uuid,
   timestamp,
   pgEnum,
@@ -10,8 +11,7 @@ import {
   real,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
-import { sellers } from "./sellers.schema";
-import { drivers } from "./drivers.schema";
+import { user, organization } from "./auth.schema";
 import { events } from "./events.schema";
 import { addresses } from "./addresses.schema";
 
@@ -42,12 +42,13 @@ export const shipments = pgTable(
       mode: "xy",
       srid: 4326,
     }).notNull(),
-    originAddressId: uuid("origin_address_id")
-      .references(() => addresses.id, { onDelete: "set null" }),
-    sellerId: uuid("seller_id")
+    originAddressId: uuid("origin_address_id").references(() => addresses.id, {
+      onDelete: "set null",
+    }),
+    orgId: text("org_id")
       .notNull()
-      .references(() => sellers.id),
-    driverId: uuid("driver_id").references(() => drivers.id, {
+      .references(() => organization.id, { onDelete: "cascade" }),
+    driverUserId: text("driver_user_id").references(() => user.id, {
       onDelete: "set null",
     }),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -64,13 +65,13 @@ export const shipments = pgTable(
 );
 
 export const shipmentsRelations = relations(shipments, ({ one, many }) => ({
-  seller: one(sellers, {
-    fields: [shipments.sellerId],
-    references: [sellers.id],
+  org: one(organization, {
+    fields: [shipments.orgId],
+    references: [organization.id],
   }),
-  driver: one(drivers, {
-    fields: [shipments.driverId],
-    references: [drivers.id],
+  driver: one(user, {
+    fields: [shipments.driverUserId],
+    references: [user.id],
   }),
   events: many(events),
   originAddress: one(addresses, {

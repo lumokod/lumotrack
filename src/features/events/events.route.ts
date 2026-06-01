@@ -2,13 +2,10 @@ import { Hono } from "hono";
 import { sValidator } from "@hono/standard-validator";
 import {
   sessionMiddleware,
-  requireRole,
+  requireOrgRole,
   type AppEnv,
 } from "@/shared/middleware/auth.middleware";
-
 import { idParamSchema } from "@/shared/validators/common";
-import { getDriver } from "@/features/drivers/drivers.service";
-import { getSeller } from "@/features/sellers/sellers.service";
 import { createEventSchema } from "./events.validation";
 import { createEvent, getShipmentEvents } from "./events.service";
 
@@ -18,28 +15,26 @@ eventsRoutes.use(sessionMiddleware);
 
 eventsRoutes.post(
   "/:id/events",
-  requireRole("driver"),
+  requireOrgRole("driver"),
   sValidator("param", idParamSchema),
   sValidator("json", createEventSchema),
   async (c) => {
     const { id } = c.req.valid("param");
     const body = c.req.valid("json");
     const user = c.get("user");
-    const driver = await getDriver(user.id);
-    const event = await createEvent(id, driver.id, body);
+    const event = await createEvent(id, user.id, body);
     return c.json(event, 201);
   },
 );
 
 eventsRoutes.get(
   "/:id/events",
-  requireRole("seller"),
+  requireOrgRole("owner", "seller"),
   sValidator("param", idParamSchema),
   async (c) => {
     const { id } = c.req.valid("param");
-    const user = c.get("user");
-    const seller = await getSeller(user.id);
-    const result = await getShipmentEvents(id, seller.id);
+    const session = c.get("session");
+    const result = await getShipmentEvents(id, session.activeOrganizationId!);
     return c.json(result);
   },
 );

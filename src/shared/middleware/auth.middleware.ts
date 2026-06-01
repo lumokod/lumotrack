@@ -1,7 +1,10 @@
+import { and, eq } from "drizzle-orm";
 import { createMiddleware } from "hono/factory";
 import { HTTPException } from "hono/http-exception";
 import { auth } from "@/lib/auth";
-import { type UserRole } from "@/features/auth/auth.types";
+import { db } from "@/core/db";
+import { member } from "@/db/schema";
+import type { OrgRole } from "@/features/auth/auth.types";
 
 type GetSessionResult = NonNullable<
   Awaited<ReturnType<typeof auth.api.getSession>>
@@ -22,11 +25,29 @@ export const sessionMiddleware = createMiddleware<AppEnv>(async (c, next) => {
   await next();
 });
 
-export const requireRole = (...roles: UserRole[]) =>
+export const requireOrgRole = (...roles: OrgRole[]) =>
   createMiddleware<AppEnv>(async (c, next) => {
     const user = c.get("user");
-    if (!roles.includes(user.role as UserRole)) {
+    const session = c.get("session");
+
+    if (!session.activeOrganizationId) {
+      throw new HTTPException(403, { message: "No active organization" });
+    }
+
+    const [membership] = await db
+      .select()
+      .from(member)
+      .where(
+        and(
+          eq(member.userId, user.id),
+          eq(member.organizationId, session.activeOrganizationId),
+        ),
+      )
+      .limit(1);
+
+    if (!membership || !roles.includes(membership.role as OrgRole)) {
       throw new HTTPException(403, { message: "Forbidden" });
     }
+
     await next();
   });

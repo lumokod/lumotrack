@@ -6,13 +6,13 @@ import type { CreateEventInput } from "./events.types";
 
 export async function createEvent(
   shipmentId: string,
-  driverId: string,
+  driverUserId: string,
   data: CreateEventInput,
 ) {
   const [shipment] = await db
     .select()
     .from(shipments)
-    .where(and(eq(shipments.id, shipmentId), eq(shipments.driverId, driverId)))
+    .where(and(eq(shipments.id, shipmentId), eq(shipments.driverUserId, driverUserId)))
     .limit(1);
 
   if (!shipment) {
@@ -29,14 +29,11 @@ export async function createEvent(
   return event;
 }
 
-export async function getShipmentEvents(
-  shipmentId: string,
-  sellerId: string,
-) {
+export async function getShipmentEvents(shipmentId: string, orgId: string) {
   const [shipment] = await db
     .select()
     .from(shipments)
-    .where(and(eq(shipments.id, shipmentId), eq(shipments.sellerId, sellerId)))
+    .where(and(eq(shipments.id, shipmentId), eq(shipments.orgId, orgId)))
     .limit(1);
 
   if (!shipment) {
