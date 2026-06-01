@@ -3,6 +3,7 @@ import { pgTable, text, uuid, timestamp } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { user } from "./auth.schema";
 import { shipments } from "./shipments.schema";
+import { addresses } from "./addresses.schema";
 
 export const sellers = pgTable("sellers", {
   id: uuid().primaryKey().$defaultFn(() => uuidv7()),
@@ -23,4 +24,5 @@ export const sellersRelations = relations(sellers, ({ one, many }) => ({
     references: [user.id],
   }),
   shipments: many(shipments),
+  addresses: many(addresses),
 }));

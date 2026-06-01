@@ -12,11 +12,15 @@ import {
 import { relations } from "drizzle-orm";
 import { sellers } from "./sellers.schema";
 import { drivers } from "./drivers.schema";
+import { events } from "./events.schema";
+import { addresses } from "./addresses.schema";
 
 export const shipmentStatusEnum = pgEnum("shipment_status", [
   "created",
   "assigned",
+  "picked_up",
   "in_transit",
+  "out_for_delivery",
   "delivered",
   "cancelled",
 ]);
@@ -38,6 +42,8 @@ export const shipments = pgTable(
       mode: "xy",
       srid: 4326,
     }).notNull(),
+    originAddressId: uuid("origin_address_id")
+      .references(() => addresses.id, { onDelete: "set null" }),
     sellerId: uuid("seller_id")
       .notNull()
       .references(() => sellers.id),
@@ -57,7 +63,7 @@ export const shipments = pgTable(
   ],
 );
 
-export const shipmentsRelations = relations(shipments, ({ one }) => ({
+export const shipmentsRelations = relations(shipments, ({ one, many }) => ({
   seller: one(sellers, {
     fields: [shipments.sellerId],
     references: [sellers.id],
@@ -65,5 +71,10 @@ export const shipmentsRelations = relations(shipments, ({ one }) => ({
   driver: one(drivers, {
     fields: [shipments.driverId],
     references: [drivers.id],
+  }),
+  events: many(events),
+  originAddress: one(addresses, {
+    fields: [shipments.originAddressId],
+    references: [addresses.id],
   }),
 }));
