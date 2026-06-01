@@ -6,7 +6,13 @@ import { user } from "@/db/schema";
 export const organizationPlugin = organization({
   organizationLimit: 1,
   organizationHooks: {
-    afterAddMember: async ({ member: newMember }) => {
+    afterCreateOrganization: async ({ member: newMember }) => {
+      await db
+        .update(user)
+        .set({ organizationId: newMember.organizationId })
+        .where(eq(user.id, newMember.userId));
+    },
+    afterAcceptInvitation: async ({ member: newMember }) => {
       await db
         .update(user)
         .set({ organizationId: newMember.organizationId })
