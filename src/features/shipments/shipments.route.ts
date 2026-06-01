@@ -13,6 +13,7 @@ import {
   createShipmentSchema,
   updateShipmentSchema,
   shipmentStatusSchema,
+  paginationSchema,
 } from "./shipments.validation";
 import type { ShipmentStatus } from "./shipments.types";
 import {
@@ -29,26 +30,28 @@ export const shipmentsRoutes = new Hono<AppEnv>();
 shipmentsRoutes.use(sessionMiddleware);
 shipmentsRoutes.use(requireUserType("seller"));
 
-shipmentsRoutes.get("/", async (c) => {
-  const user = c.get("user");
-  const seller = await getSeller(user.id);
-  const result = await getAllShipments(seller.id);
-  return c.json(result);
-});
+shipmentsRoutes.get(
+  "/",
+  sValidator("query", paginationSchema),
+  async (c) => {
+    const { cursor } = c.req.valid("query");
+    const user = c.get("user");
+    const seller = await getSeller(user.id);
+    const result = await getAllShipments(seller.id, cursor);
+    return c.json(result);
+  },
+);
 
 shipmentsRoutes.get(
   "/status/:status",
   sValidator("param", shipmentStatusSchema),
+  sValidator("query", paginationSchema),
   async (c) => {
     const status = c.req.valid("param");
+    const { cursor } = c.req.valid("query");
     const user = c.get("user");
-
     const seller = await getSeller(user.id);
-    const result = await getShipmentsByStatus(
-      status as ShipmentStatus,
-      seller.id,
-    );
-
+    const result = await getShipmentsByStatus(status as ShipmentStatus, seller.id, cursor);
     return c.json(result);
   },
 );
@@ -71,16 +74,7 @@ shipmentsRoutes.post(
     const body = c.req.valid("json");
     const user = c.get("user");
     const seller = await getSeller(user.id);
-    const shipment = await createShipment(
-      {
-        longitude: body.longitude,
-        latitude: body.latitude,
-        content: body.content,
-        weight: body.weight,
-        estimatedDelivery: body.estimatedDelivery,
-      },
-      seller.id,
-    );
+    const shipment = await createShipment(body, seller.id);
     return c.json(shipment, 201);
   },
 );
@@ -90,8 +84,8 @@ shipmentsRoutes.patch(
   sValidator("param", z.uuidv7()),
   sValidator("json", updateShipmentSchema),
   async (c) => {
-    const body = c.req.valid("json");
     const id = c.req.valid("param");
+    const body = c.req.valid("json");
     const user = c.get("user");
     const seller = await getSeller(user.id);
     const shipment = await updateShipment(id, body, seller.id);

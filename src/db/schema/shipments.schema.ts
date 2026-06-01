@@ -32,7 +32,7 @@ export const shipments = pgTable(
     weight: real().notNull(),
     estimatedDelivery: timestamp("estimated_delivery", {
       withTimezone: true,
-    }).notNull(),
+    }),
     destination: geometry("destination", {
       type: "point",
       mode: "xy",
