@@ -8,6 +8,6 @@ sellersRoutes.use(sessionMiddleware);
 
 sellersRoutes.post("/register", async (c) => {
   const user = c.get("user");
-  const result = await registerSeller(user.id, user.userType);
+  const result = await registerSeller(user.id, user.role as any);
   return c.json(result, 201);
 });

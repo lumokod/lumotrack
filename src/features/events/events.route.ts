@@ -2,9 +2,10 @@ import { Hono } from "hono";
 import { sValidator } from "@hono/standard-validator";
 import {
   sessionMiddleware,
-  requireUserType,
+  requireRole,
   type AppEnv,
 } from "@/shared/middleware/auth.middleware";
+
 import { idParamSchema } from "@/shared/validators/common";
 import { getDriver } from "@/features/drivers/drivers.service";
 import { getSeller } from "@/features/sellers/sellers.service";
@@ -17,7 +18,7 @@ eventsRoutes.use(sessionMiddleware);
 
 eventsRoutes.post(
   "/:id/events",
-  requireUserType("driver"),
+  requireRole("driver"),
   sValidator("param", idParamSchema),
   sValidator("json", createEventSchema),
   async (c) => {
@@ -32,7 +33,7 @@ eventsRoutes.post(
 
 eventsRoutes.get(
   "/:id/events",
-  requireUserType("seller"),
+  requireRole("seller"),
   sValidator("param", idParamSchema),
   async (c) => {
     const { id } = c.req.valid("param");

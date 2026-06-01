@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "@/core/db";
-import { shipments } from "@/db/schema";
+import { shipments, drivers } from "@/db/schema";
 import type {
   ShipmentStatus,
   CreateShipmentInput,
@@ -88,4 +88,30 @@ export async function deleteShipment(shipmentId: string, sellerId: string) {
   await db
     .delete(shipments)
     .where(and(eq(shipments.id, shipmentId), eq(shipments.sellerId, sellerId)));
+}
+
+export async function assignDriver(
+  shipmentId: string,
+  sellerId: string,
+  driverId: string,
+) {
+  await getShipmentById(shipmentId, sellerId);
+
+  const [driver] = await db
+    .select()
+    .from(drivers)
+    .where(eq(drivers.id, driverId))
+    .limit(1);
+
+  if (!driver) {
+    throw new HTTPException(404, { message: "Driver not found" });
+  }
+
+  const [updated] = await db
+    .update(shipments)
+    .set({ driverId, status: "assigned" })
+    .where(and(eq(shipments.id, shipmentId), eq(shipments.sellerId, sellerId)))
+    .returning();
+
+  return formatShipment(updated);
 }

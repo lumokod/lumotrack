@@ -6,19 +6,22 @@ import {
   createShipment,
   updateShipment,
   deleteShipment,
+  assignDriver,
 } from "./shipments.service";
 import {
   createShipmentSchema,
   updateShipmentSchema,
   shipmentStatusSchema,
   paginationSchema,
+  assignDriverSchema,
 } from "./shipments.validation";
 import type { ShipmentStatus } from "./shipments.types";
 import {
   sessionMiddleware,
-  requireUserType,
+  requireRole,
   type AppEnv,
 } from "@/shared/middleware/auth.middleware";
+
 import { getSeller } from "@/features/sellers/sellers.service";
 import { sValidator } from "@hono/standard-validator";
 import { idParamSchema } from "@/shared/validators/common";
@@ -26,7 +29,7 @@ import { idParamSchema } from "@/shared/validators/common";
 export const shipmentsRoutes = new Hono<AppEnv>();
 
 shipmentsRoutes.use(sessionMiddleware);
-shipmentsRoutes.use(requireUserType("seller"));
+shipmentsRoutes.use(requireRole("seller"));
 
 shipmentsRoutes.get("/", sValidator("query", paginationSchema), async (c) => {
   const { cursor } = c.req.valid("query");
@@ -99,5 +102,19 @@ shipmentsRoutes.delete(
     await deleteShipment(id, seller.id);
 
     return c.json({ message: "Shipment deleted successfully" });
+  },
+);
+
+shipmentsRoutes.patch(
+  "/:id/assign",
+  sValidator("param", idParamSchema),
+  sValidator("json", assignDriverSchema),
+  async (c) => {
+    const { id } = c.req.valid("param");
+    const { driverId } = c.req.valid("json");
+    const user = c.get("user");
+    const seller = await getSeller(user.id);
+    const shipment = await assignDriver(id, seller.id, driverId);
+    return c.json(shipment);
   },
 );

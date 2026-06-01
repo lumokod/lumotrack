@@ -1,8 +1,10 @@
 import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { db } from "@/core/db";
-import { drivers, driverLocations, user } from "@/db/schema";
+import { drivers, driverLocations, user, shipments } from "@/db/schema";
 import type { DriverLocationCreate } from "./drivers.types";
+import type { UserRole } from "@/features/auth/auth.types";
+import { formatShipment, paginateShipments } from "@/features/shipments/shipments.util";
 
 export async function getDriver(userId: string) {
   const [driver] = await db
@@ -18,9 +20,9 @@ export async function getDriver(userId: string) {
 
 export async function registerDeliveryPartner(
   userId: string,
-  userType: string | null | undefined,
+  role: UserRole | null | undefined,
 ) {
-  if (userType) {
+  if (role !== "user") {
     throw new HTTPException(409, {
       message: "User already has a role assigned",
     });
@@ -42,14 +44,14 @@ export async function registerDeliveryPartner(
     const [newDriver] = await tx.insert(drivers).values({ userId }).returning();
     const [updatedUser] = await tx
       .update(user)
-      .set({ userType: "driver" })
+      .set({ role: "driver" })
       .where(eq(user.id, userId))
       .returning({
         id: user.id,
         name: user.name,
         email: user.email,
         image: user.image,
-        userType: user.userType,
+        role: user.role,
       });
     return { driver: newDriver, updatedUser };
   });
@@ -70,6 +72,24 @@ export async function addLocation(
     })
     .returning();
   return location;
+}
+
+export async function getDriverShipments(driverId: string, cursor?: string) {
+  return paginateShipments([eq(shipments.driverId, driverId)], cursor);
+}
+
+export async function getDriverShipmentById(driverId: string, shipmentId: string) {
+  const [shipment] = await db
+    .select()
+    .from(shipments)
+    .where(and(eq(shipments.id, shipmentId), eq(shipments.driverId, driverId)))
+    .limit(1);
+
+  if (!shipment) {
+    throw new HTTPException(404, { message: "Shipment not found" });
+  }
+
+  return formatShipment(shipment);
 }
 
 export async function removeLocation(driverId: string, locationId: string) {

@@ -1,7 +1,7 @@
 import { createMiddleware } from "hono/factory";
 import { HTTPException } from "hono/http-exception";
 import { auth } from "@/lib/auth";
-import { type UserType } from "@/features/auth/auth.types";
+import { type UserRole } from "@/features/auth/auth.types";
 
 type GetSessionResult = NonNullable<
   Awaited<ReturnType<typeof auth.api.getSession>>
@@ -22,10 +22,10 @@ export const sessionMiddleware = createMiddleware<AppEnv>(async (c, next) => {
   await next();
 });
 
-export const requireUserType = (...types: UserType[]) =>
+export const requireRole = (...roles: UserRole[]) =>
   createMiddleware<AppEnv>(async (c, next) => {
     const user = c.get("user");
-    if (!types.includes(user.userType as UserType)) {
+    if (!roles.includes(user.role as UserRole)) {
       throw new HTTPException(403, { message: "Forbidden" });
     }
     await next();

@@ -1,12 +1,12 @@
 import { Hono } from "hono";
-import { sessionMiddleware, requireUserType, type AppEnv } from "@/shared/middleware/auth.middleware";
+import { sessionMiddleware, requireRole, type AppEnv } from "@/shared/middleware/auth.middleware";
 import { getSeller } from "@/features/sellers/sellers.service";
 import { chat } from "./ai.service";
 
 export const aiRoutes = new Hono<AppEnv>();
 
 aiRoutes.use(sessionMiddleware);
-aiRoutes.use(requireUserType("seller"));
+aiRoutes.use(requireRole("seller"));
 
 aiRoutes.post("/chat", async (c) => {
   const user = c.get("user");

@@ -1,3 +1,1 @@
-import { userTypeEnum } from "@/db/schema";
-
-export type UserType = (typeof userTypeEnum.enumValues)[number];
+export type UserRole = "user" | "seller" | "driver" | "admin";

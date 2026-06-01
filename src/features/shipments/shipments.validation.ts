@@ -28,3 +28,7 @@ export const shipmentStatusSchema = z.enum(shipmentStatusEnum.enumValues);
 export const paginationSchema = z.object({
   cursor: z.uuidv7().optional(),
 });
+
+export const assignDriverSchema = z.object({
+  driverId: z.uuidv7(),
+});

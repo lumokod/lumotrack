@@ -78,6 +78,13 @@
       "when": 1780290857367,
       "tag": "0010_large_marten_broadcloak",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1780296769105,
+      "tag": "0011_last_william_stryker",
+      "breakpoints": true
     }
   ]
 }

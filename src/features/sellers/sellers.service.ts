@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/core/db";
 import { sellers, user } from "@/db/schema";
 import { HTTPException } from "hono/http-exception";
+import type { UserRole } from "@/features/auth/auth.types";
 
 export async function getSeller(userId: string) {
   const [seller] = await db
@@ -15,11 +16,8 @@ export async function getSeller(userId: string) {
   return seller;
 }
 
-export async function registerSeller(
-  userId: string,
-  userType: string | null | undefined,
-) {
-  if (userType) {
+export async function registerSeller(userId: string, role: UserRole | null | undefined) {
+  if (role !== "user") {
     throw new HTTPException(409, {
       message: "User already has a role assigned",
     });
@@ -39,14 +37,14 @@ export async function registerSeller(
     const [newSeller] = await tx.insert(sellers).values({ userId }).returning();
     const [updatedUser] = await tx
       .update(user)
-      .set({ userType: "seller" })
+      .set({ role: "seller" })
       .where(eq(user.id, userId))
       .returning({
         id: user.id,
         name: user.name,
         email: user.email,
         image: user.image,
-        userType: user.userType,
+        role: user.role,
       });
     return { seller: newSeller, updatedUser };
   });

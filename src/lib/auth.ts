@@ -3,8 +3,9 @@ import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import * as schema from "@/db/schema";
 import { organization, admin, openAPI } from "better-auth/plugins";
 import { db } from "@/core/db";
+import { eq } from "drizzle-orm";
 import { env } from "@/core/env";
-import { userFields } from "@/features/auth/auth.validation";
+import { sellers } from "@/db/schema";
 
 export const auth = betterAuth({
   secret: env.BETTER_AUTH_SECRET,
@@ -15,9 +16,23 @@ export const auth = betterAuth({
   }),
   emailAndPassword: {
     enabled: true,
+    requireEmailVerification: true,
   },
-  user: {
-    additionalFields: userFields,
-  },
-  plugins: [organization(), admin(), openAPI()],
+  plugins: [
+    organization({
+      organizationLimit: 1,
+      hooks: {
+        organization: {
+          afterCreate: async ({ organization: org, member }: { organization: { id: string }, member: { userId: string } }) => {
+            await db
+              .update(sellers)
+              .set({ orgId: org.id })
+              .where(eq(sellers.userId, member.userId));
+          },
+        },
+      },
+    }),
+    admin(),
+    openAPI(),
+  ],
 });
