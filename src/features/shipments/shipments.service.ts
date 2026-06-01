@@ -19,7 +19,10 @@ export async function getShipmentById(shipmentId: string, sellerId: string) {
     .from(shipments)
     .where(and(eq(shipments.id, shipmentId), eq(shipments.sellerId, sellerId)))
     .limit(1);
-  return shipment ? formatShipment(shipment) : null;
+  if (!shipment) {
+    throw new HTTPException(404, { message: "Shipment not found" });
+  }
+  return formatShipment(shipment);
 }
 
 export async function getShipmentsByStatus(
@@ -33,11 +36,17 @@ export async function getShipmentsByStatus(
   );
 }
 
-export async function createShipment(data: CreateShipmentInput, sellerId: string) {
+export async function createShipment(
+  data: CreateShipmentInput,
+  sellerId: string,
+) {
   const [shipment] = await db
     .insert(shipments)
     .values({
-      destination: { x: data.destination.longitude, y: data.destination.latitude },
+      destination: {
+        x: data.destination.longitude,
+        y: data.destination.latitude,
+      },
       content: data.content,
       weight: data.weight,
       estimatedDelivery: data.estimatedDelivery,
@@ -52,17 +61,18 @@ export async function updateShipment(
   data: UpdateShipmentInput,
   sellerId: string,
 ) {
-  const existing = await getShipmentById(shipmentId, sellerId);
-  if (!existing) return null;
+  await getShipmentById(shipmentId, sellerId);
 
   const { destination, ...rest } = data;
 
-  const updateData: Partial<typeof shipments.$inferInsert> = {
-    ...rest,
-    ...(destination
-      ? { destination: { x: destination.longitude, y: destination.latitude } }
-      : {}),
-  };
+  const updateData: Partial<typeof shipments.$inferInsert> = { ...rest };
+
+  if (destination) {
+    updateData.destination = {
+      x: destination.longitude,
+      y: destination.latitude,
+    };
+  }
 
   const [updated] = await db
     .update(shipments)
@@ -73,11 +83,7 @@ export async function updateShipment(
 }
 
 export async function deleteShipment(shipmentId: string, sellerId: string) {
-  const existing = await getShipmentById(shipmentId, sellerId);
-
-  if (!existing) {
-    throw new HTTPException(404, { message: "Shipment not found" });
-  }
+  await getShipmentById(shipmentId, sellerId);
 
   await db
     .delete(shipments)
