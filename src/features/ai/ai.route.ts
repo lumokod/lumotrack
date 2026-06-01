@@ -12,8 +12,8 @@ aiRoutes.use(sessionMiddleware);
 aiRoutes.use(requireOrgRole("owner", "seller"));
 
 aiRoutes.post("/chat", async (c) => {
-  const session = c.get("session");
   const { question } = await c.req.json<{ question: string }>();
-  const answer = await chat(question, session.activeOrganizationId!);
+  const organizationId = c.get("user").organizationId!;
+  const answer = await chat(question, organizationId);
   return c.json({ answer });
 });

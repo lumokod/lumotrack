@@ -8,6 +8,13 @@
       "when": 1780309538137,
       "tag": "0000_high_captain_cross",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1780314760257,
+      "tag": "0001_silent_caretaker",
+      "breakpoints": true
     }
   ]
 }

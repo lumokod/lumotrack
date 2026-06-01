@@ -33,8 +33,8 @@ eventsRoutes.get(
   sValidator("param", idParamSchema),
   async (c) => {
     const { id } = c.req.valid("param");
-    const session = c.get("session");
-    const result = await getShipmentEvents(id, session.activeOrganizationId!);
+    const organizationId = c.get("user").organizationId!;
+    const result = await getShipmentEvents(id, organizationId);
     return c.json(result);
   },
 );
