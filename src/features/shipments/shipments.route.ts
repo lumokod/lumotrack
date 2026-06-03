@@ -18,7 +18,7 @@ import {
 import type { ShipmentStatus } from "./shipments.types";
 import {
   sessionMiddleware,
-  requireOrgRole,
+  requireUserType,
   type AppEnv,
 } from "@/shared/middleware/auth.middleware";
 import { sValidator } from "@hono/standard-validator";
@@ -27,7 +27,7 @@ import { idParamSchema } from "@/shared/validators/common";
 export const shipmentsRoutes = new Hono<AppEnv>();
 
 shipmentsRoutes.use(sessionMiddleware);
-shipmentsRoutes.use(requireOrgRole("owner", "seller"));
+shipmentsRoutes.use(requireUserType("seller"));
 
 shipmentsRoutes.get("/", sValidator("query", paginationSchema), async (c) => {
   const { cursor } = c.req.valid("query");

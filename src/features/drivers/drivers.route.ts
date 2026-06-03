@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { sValidator } from "@hono/standard-validator";
 import {
   sessionMiddleware,
-  requireOrgRole,
+  requireUserType,
   type AppEnv,
 } from "@/shared/middleware/auth.middleware";
 import {
@@ -18,7 +18,7 @@ import { idParamSchema } from "@/shared/validators/common";
 export const driversRoutes = new Hono<AppEnv>();
 
 driversRoutes.use(sessionMiddleware);
-driversRoutes.use(requireOrgRole("driver"));
+driversRoutes.use(requireUserType("driver"));
 
 driversRoutes.post("/me/locations", async (c) => {
   const user = c.get("user");

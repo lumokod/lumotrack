@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import {
   sessionMiddleware,
-  requireOrgRole,
+  requireUserType,
   type AppEnv,
 } from "@/shared/middleware/auth.middleware";
 import { chat } from "./ai.service";
@@ -9,7 +9,7 @@ import { chat } from "./ai.service";
 export const aiRoutes = new Hono<AppEnv>();
 
 aiRoutes.use(sessionMiddleware);
-aiRoutes.use(requireOrgRole("owner", "seller"));
+aiRoutes.use(requireUserType("seller"));
 
 aiRoutes.post("/chat", async (c) => {
   const { question } = await c.req.json<{ question: string }>();

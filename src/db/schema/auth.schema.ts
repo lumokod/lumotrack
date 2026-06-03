@@ -1,12 +1,15 @@
 import { relations } from "drizzle-orm";
 import {
   pgTable,
+  pgEnum,
   text,
   timestamp,
   boolean,
   index,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+
+export const userTypeEnum = pgEnum("user_type", ["seller", "driver"]);
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -24,6 +27,7 @@ export const user = pgTable("user", {
   banReason: text("ban_reason"),
   banExpires: timestamp("ban_expires"),
   organizationId: text("organization_id"),
+  userType: userTypeEnum("user_type"),
 });
 
 export const session = pgTable(
@@ -96,6 +100,7 @@ export const organization = pgTable(
     logo: text("logo"),
     createdAt: timestamp("created_at").notNull(),
     metadata: text("metadata"),
+    color: text("color").default("#f59e0b").notNull(),
   },
   (table) => [uniqueIndex("organization_slug_uidx").on(table.slug)],
 );

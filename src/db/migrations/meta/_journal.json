@@ -15,6 +15,20 @@
       "when": 1780314760257,
       "tag": "0001_silent_caretaker",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780468640842,
+      "tag": "0002_flaky_rachel_grey",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1780470544385,
+      "tag": "0003_yellow_talisman",
+      "breakpoints": true
     }
   ]
 }

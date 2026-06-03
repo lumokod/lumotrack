@@ -1,0 +1,1 @@
+ALTER TABLE "organization" ADD COLUMN "color" text DEFAULT '#f59e0b' NOT NULL;

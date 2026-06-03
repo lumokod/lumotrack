@@ -26,6 +26,11 @@ export const auth = betterAuth({
         required: false,
         input: false,
       },
+      userType: {
+        type: "string",
+        required: false,
+        input: false,
+      },
     },
   },
 
