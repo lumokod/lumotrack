@@ -1,0 +1,1 @@
+ALTER TABLE "organization" ALTER COLUMN "color" DROP NOT NULL;

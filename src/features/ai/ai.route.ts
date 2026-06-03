@@ -1,7 +1,8 @@
 import { Hono } from "hono";
 import {
   sessionMiddleware,
-  requireUserType,
+  requireActiveOrg,
+  requirePermission,
   type AppEnv,
 } from "@/shared/middleware/auth.middleware";
 import { chat } from "./ai.service";
@@ -9,11 +10,15 @@ import { chat } from "./ai.service";
 export const aiRoutes = new Hono<AppEnv>();
 
 aiRoutes.use(sessionMiddleware);
-aiRoutes.use(requireUserType("seller"));
+aiRoutes.use(requireActiveOrg);
 
-aiRoutes.post("/chat", async (c) => {
-  const { question } = await c.req.json<{ question: string }>();
-  const organizationId = c.get("user").organizationId!;
-  const answer = await chat(question, organizationId);
-  return c.json({ answer });
-});
+aiRoutes.post(
+  "/chat",
+  requirePermission({ shipment: ["create"] }),
+  async (c) => {
+    const { question } = await c.req.json<{ question: string }>();
+    const organizationId = c.get("session").activeOrganizationId!;
+    const answer = await chat(question, organizationId);
+    return c.json({ answer });
+  },
+);

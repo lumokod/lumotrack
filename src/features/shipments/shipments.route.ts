@@ -18,7 +18,8 @@ import {
 import type { ShipmentStatus } from "./shipments.types";
 import {
   sessionMiddleware,
-  requireUserType,
+  requireActiveOrg,
+  requirePermission,
   type AppEnv,
 } from "@/shared/middleware/auth.middleware";
 import { sValidator } from "@hono/standard-validator";
@@ -27,23 +28,29 @@ import { idParamSchema } from "@/shared/validators/common";
 export const shipmentsRoutes = new Hono<AppEnv>();
 
 shipmentsRoutes.use(sessionMiddleware);
-shipmentsRoutes.use(requireUserType("seller"));
+shipmentsRoutes.use(requireActiveOrg);
 
-shipmentsRoutes.get("/", sValidator("query", paginationSchema), async (c) => {
-  const { cursor } = c.req.valid("query");
-  const organizationId = c.get("user").organizationId!;
-  const result = await getAllShipments(organizationId, cursor);
-  return c.json(result);
-});
+shipmentsRoutes.get(
+  "/",
+  requirePermission({ shipment: ["read"] }),
+  sValidator("query", paginationSchema),
+  async (c) => {
+    const { cursor } = c.req.valid("query");
+    const organizationId = c.get("session").activeOrganizationId!;
+    const result = await getAllShipments(organizationId, cursor);
+    return c.json(result);
+  },
+);
 
 shipmentsRoutes.get(
   "/status/:status",
+  requirePermission({ shipment: ["read"] }),
   sValidator("param", shipmentStatusSchema),
   sValidator("query", paginationSchema),
   async (c) => {
     const status = c.req.valid("param");
     const { cursor } = c.req.valid("query");
-    const organizationId = c.get("user").organizationId!;
+    const organizationId = c.get("session").activeOrganizationId!;
     const result = await getShipmentsByStatus(
       status as ShipmentStatus,
       organizationId,
@@ -53,19 +60,25 @@ shipmentsRoutes.get(
   },
 );
 
-shipmentsRoutes.get("/:id", sValidator("param", idParamSchema), async (c) => {
-  const { id } = c.req.valid("param");
-  const organizationId = c.get("user").organizationId!;
-  const shipment = await getShipmentById(id, organizationId);
-  return c.json(shipment);
-});
+shipmentsRoutes.get(
+  "/:id",
+  requirePermission({ shipment: ["read"] }),
+  sValidator("param", idParamSchema),
+  async (c) => {
+    const { id } = c.req.valid("param");
+    const organizationId = c.get("session").activeOrganizationId!;
+    const shipment = await getShipmentById(id, organizationId);
+    return c.json(shipment);
+  },
+);
 
 shipmentsRoutes.post(
   "/",
+  requirePermission({ shipment: ["create"] }),
   sValidator("json", createShipmentSchema),
   async (c) => {
     const body = c.req.valid("json");
-    const organizationId = c.get("user").organizationId!;
+    const organizationId = c.get("session").activeOrganizationId!;
     const shipment = await createShipment(body, organizationId);
     return c.json(shipment, 201);
   },
@@ -73,12 +86,13 @@ shipmentsRoutes.post(
 
 shipmentsRoutes.patch(
   "/:id",
+  requirePermission({ shipment: ["update"] }),
   sValidator("param", idParamSchema),
   sValidator("json", updateShipmentSchema),
   async (c) => {
     const { id } = c.req.valid("param");
     const body = c.req.valid("json");
-    const organizationId = c.get("user").organizationId!;
+    const organizationId = c.get("session").activeOrganizationId!;
     const shipment = await updateShipment(id, body, organizationId);
     return c.json(shipment);
   },
@@ -86,10 +100,11 @@ shipmentsRoutes.patch(
 
 shipmentsRoutes.delete(
   "/:id",
+  requirePermission({ shipment: ["delete"] }),
   sValidator("param", idParamSchema),
   async (c) => {
     const { id } = c.req.valid("param");
-    const organizationId = c.get("user").organizationId!;
+    const organizationId = c.get("session").activeOrganizationId!;
     await deleteShipment(id, organizationId);
     return c.json({ message: "Shipment deleted successfully" });
   },
@@ -97,12 +112,13 @@ shipmentsRoutes.delete(
 
 shipmentsRoutes.patch(
   "/:id/assign",
+  requirePermission({ shipment: ["create"] }),
   sValidator("param", idParamSchema),
   sValidator("json", assignDriverSchema),
   async (c) => {
     const { id } = c.req.valid("param");
     const { driverId } = c.req.valid("json");
-    const organizationId = c.get("user").organizationId!;
+    const organizationId = c.get("session").activeOrganizationId!;
     const shipment = await assignDriver(id, driverId, organizationId);
     return c.json(shipment);
   },

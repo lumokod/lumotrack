@@ -2,7 +2,8 @@ import { Hono } from "hono";
 import { sValidator } from "@hono/standard-validator";
 import {
   sessionMiddleware,
-  requireUserType,
+  requireActiveOrg,
+  requirePermission,
   type AppEnv,
 } from "@/shared/middleware/auth.middleware";
 import { idParamSchema } from "@/shared/validators/common";
@@ -12,10 +13,11 @@ import { createEvent, getShipmentEvents } from "./events.service";
 export const eventsRoutes = new Hono<AppEnv>();
 
 eventsRoutes.use(sessionMiddleware);
+eventsRoutes.use(requireActiveOrg);
 
 eventsRoutes.post(
   "/:id/events",
-  requireUserType("driver"),
+  requirePermission({ event: ["create"] }),
   sValidator("param", idParamSchema),
   sValidator("json", createEventSchema),
   async (c) => {
@@ -29,11 +31,11 @@ eventsRoutes.post(
 
 eventsRoutes.get(
   "/:id/events",
-  requireUserType("seller"),
+  requirePermission({ event: ["read"] }),
   sValidator("param", idParamSchema),
   async (c) => {
     const { id } = c.req.valid("param");
-    const organizationId = c.get("user").organizationId!;
+    const organizationId = c.get("session").activeOrganizationId!;
     const result = await getShipmentEvents(id, organizationId);
     return c.json(result);
   },

@@ -29,6 +29,27 @@
       "when": 1780470544385,
       "tag": "0003_yellow_talisman",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1780470896886,
+      "tag": "0004_amazing_pet_avengers",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1780473326675,
+      "tag": "0005_uneven_excalibur",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1780477488887,
+      "tag": "0006_dry_the_professor",
+      "breakpoints": true
     }
   ]
 }

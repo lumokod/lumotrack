@@ -1,7 +1,6 @@
 import { createMiddleware } from "hono/factory";
 import { HTTPException } from "hono/http-exception";
 import { auth } from "@/lib/auth";
-import type { UserType } from "@/features/auth/auth.types";
 
 export type AppEnv = {
   Variables: {
@@ -18,11 +17,19 @@ export const sessionMiddleware = createMiddleware<AppEnv>(async (c, next) => {
   await next();
 });
 
-export const requireUserType = (...types: UserType[]) =>
+export const requireActiveOrg = createMiddleware<AppEnv>(async (c, next) => {
+  if (!c.get("session").activeOrganizationId) {
+    throw new HTTPException(403, { message: "No active organization" });
+  }
+  await next();
+});
+
+export const requirePermission = (permissions: Record<string, string[] | undefined>) =>
   createMiddleware<AppEnv>(async (c, next) => {
-    const user = c.get("user");
-    if (!types.includes(user.userType as UserType)) {
-      throw new HTTPException(403, { message: "Forbidden" });
-    }
+    const result = await auth.api.hasPermission({
+      headers: c.req.raw.headers,
+      body: { permissions },
+    });
+    if (!result.success) throw new HTTPException(403, { message: "Forbidden" });
     await next();
   });
