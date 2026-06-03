@@ -54,8 +54,8 @@ export const organizationPlugin = organization({
   organizationLimit: 1,
 
   organizationHooks: {
-    beforeAddMember: async ({ member: m }) => ({
-      data: { ...m, role: m.role || "driver" },
+    beforeCreateInvitation: async ({ invitation }) => ({
+      data: { ...invitation, role: invitation.role || "driver" },
     }),
     beforeCreateOrganization: async ({ organization: org }) => {
       return {
