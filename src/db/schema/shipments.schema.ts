@@ -45,7 +45,7 @@ export const shipments = pgTable(
     originAddressId: uuid("origin_address_id").references(() => addresses.id, {
       onDelete: "set null",
     }),
-    orgId: text("org_id")
+    organizationId: text("organization_id")
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),
     driverUserId: text("driver_user_id").references(() => user.id, {
@@ -66,7 +66,7 @@ export const shipments = pgTable(
 
 export const shipmentsRelations = relations(shipments, ({ one, many }) => ({
   org: one(organization, {
-    fields: [shipments.orgId],
+    fields: [shipments.organizationId],
     references: [organization.id],
   }),
   driver: one(user, {

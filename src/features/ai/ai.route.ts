@@ -18,7 +18,7 @@ aiRoutes.post(
   async (c) => {
     const { question } = await c.req.json<{ question: string }>();
     const organizationId = c.get("session").activeOrganizationId!;
-    const answer = await chat(question, organizationId);
-    return c.json({ answer });
+    const result = await chat(question, organizationId);
+    return c.json(result);
   },
 );

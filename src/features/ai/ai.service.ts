@@ -1,66 +1,24 @@
-import { generateText, stepCountIs, tool } from "ai";
+import { generateText, Output, stepCountIs } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
-import { z } from "zod";
 import { env } from "@/core/env";
-import { shipmentStatusEnum } from "@/db/schema";
-import {
-  getAllShipments,
-  getShipmentById,
-  getShipmentsByStatus,
-  createShipment,
-  updateShipment,
-  deleteShipment,
-} from "@/features/shipments/shipments.service";
-import {
-  createShipmentSchema,
-  updateShipmentSchema,
-} from "@/features/shipments/shipments.validation";
+import { SYSTEM_PROMPT } from "./ai.prompt";
+import { getTools } from "./tools";
+import { chatResponseSchema, type ChatResponse } from "./validations";
 
 const anthropic = createAnthropic({ apiKey: env.ANTHROPIC_API_KEY });
 
-export async function chat(question: string, orgId: string): Promise<string> {
-  const { text } = await generateText({
+export async function chat(
+  question: string,
+  orgId: string,
+): Promise<ChatResponse> {
+  const { output } = await generateText({
     model: anthropic("claude-sonnet-4-6"),
-    system:
-      "You are a helpful logistics assistant for sellers. Help them manage their shipments by using the available tools.",
+    output: Output.object({ schema: chatResponseSchema }),
+    system: SYSTEM_PROMPT,
     prompt: question,
-    tools: {
-      get_all_shipments: tool({
-        description: "Get all shipments for the organization",
-        inputSchema: z.object({}),
-        execute: async () => getAllShipments(orgId),
-      }),
-      get_shipment_by_id: tool({
-        description: "Get a single shipment by its ID",
-        inputSchema: z.object({ shipment_id: z.string() }),
-        execute: async ({ shipment_id }) => getShipmentById(shipment_id, orgId),
-      }),
-      get_shipments_by_status: tool({
-        description: "Get all shipments filtered by status",
-        inputSchema: z.object({
-          status: z.enum(shipmentStatusEnum.enumValues),
-        }),
-        execute: async ({ status }) => getShipmentsByStatus(status, orgId),
-      }),
-      create_shipment: tool({
-        description: "Create a new shipment",
-        inputSchema: createShipmentSchema,
-        execute: async (shipment) => createShipment(shipment, orgId),
-      }),
-      update_shipment: tool({
-        description: "Update an existing shipment",
-        inputSchema: updateShipmentSchema.extend({ shipment_id: z.string() }),
-        execute: async ({ shipment_id, ...rest }) =>
-          updateShipment(shipment_id, rest, orgId),
-      }),
-      delete_shipment: tool({
-        description: "Delete a shipment by its ID",
-        inputSchema: z.object({ shipment_id: z.string() }),
-        execute: async ({ shipment_id }) => deleteShipment(shipment_id, orgId),
-      }),
-    },
+    tools: getTools(orgId),
     stopWhen: stepCountIs(5),
   });
 
-  return text;
+  return output;
 }

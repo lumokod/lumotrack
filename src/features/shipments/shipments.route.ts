@@ -23,7 +23,7 @@ import {
   type AppEnv,
 } from "@/shared/middleware/auth.middleware";
 import { sValidator } from "@hono/standard-validator";
-import { idParamSchema } from "@/shared/validators/common";
+import { idParamSchema } from "@/shared/validations/common";
 
 export const shipmentsRoutes = new Hono<AppEnv>();
 

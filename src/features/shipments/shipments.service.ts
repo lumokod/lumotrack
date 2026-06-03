@@ -10,14 +10,14 @@ import { HTTPException } from "hono/http-exception";
 import { formatShipment, paginateShipments } from "./shipments.util";
 
 export async function getAllShipments(orgId: string, cursor?: string) {
-  return paginateShipments([eq(shipments.orgId, orgId)], cursor);
+  return paginateShipments([eq(shipments.organizationId, orgId)], cursor);
 }
 
 export async function getShipmentById(shipmentId: string, orgId: string) {
   const [shipment] = await db
     .select()
     .from(shipments)
-    .where(and(eq(shipments.id, shipmentId), eq(shipments.orgId, orgId)))
+    .where(and(eq(shipments.id, shipmentId), eq(shipments.organizationId, orgId)))
     .limit(1);
   if (!shipment) {
     throw new HTTPException(404, { message: "Shipment not found" });
@@ -31,7 +31,7 @@ export async function getShipmentsByStatus(
   cursor?: string,
 ) {
   return paginateShipments(
-    [eq(shipments.orgId, orgId), eq(shipments.status, status)],
+    [eq(shipments.organizationId, orgId), eq(shipments.status, status)],
     cursor,
   );
 }
@@ -47,7 +47,7 @@ export async function createShipment(data: CreateShipmentInput, orgId: string) {
       content: data.content,
       weight: data.weight,
       estimatedDelivery: data.estimatedDelivery,
-      orgId,
+      organizationId: orgId,
     })
     .returning();
   return formatShipment(shipment);
@@ -73,7 +73,7 @@ export async function updateShipment(
   const [updated] = await db
     .update(shipments)
     .set(updateData)
-    .where(and(eq(shipments.id, shipmentId), eq(shipments.orgId, orgId)))
+    .where(and(eq(shipments.id, shipmentId), eq(shipments.organizationId, orgId)))
     .returning();
   return updated ? formatShipment(updated) : null;
 }
@@ -83,7 +83,7 @@ export async function deleteShipment(shipmentId: string, orgId: string) {
 
   await db
     .delete(shipments)
-    .where(and(eq(shipments.id, shipmentId), eq(shipments.orgId, orgId)));
+    .where(and(eq(shipments.id, shipmentId), eq(shipments.organizationId, orgId)));
 }
 
 export async function assignDriver(
@@ -112,7 +112,7 @@ export async function assignDriver(
   const [updated] = await db
     .update(shipments)
     .set({ driverUserId, status: "assigned" })
-    .where(and(eq(shipments.id, shipmentId), eq(shipments.orgId, orgId)))
+    .where(and(eq(shipments.id, shipmentId), eq(shipments.organizationId, orgId)))
     .returning();
 
   return formatShipment(updated);

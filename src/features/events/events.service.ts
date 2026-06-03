@@ -33,7 +33,7 @@ export async function getShipmentEvents(shipmentId: string, orgId: string) {
   const [shipment] = await db
     .select()
     .from(shipments)
-    .where(and(eq(shipments.id, shipmentId), eq(shipments.orgId, orgId)))
+    .where(and(eq(shipments.id, shipmentId), eq(shipments.organizationId, orgId)))
     .limit(1);
 
   if (!shipment) {

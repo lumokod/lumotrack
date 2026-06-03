@@ -14,7 +14,7 @@ import {
 } from "./drivers.service";
 import type { DriverLocationCreate } from "./drivers.types";
 import { paginationSchema } from "@/features/shipments/shipments.validation";
-import { idParamSchema } from "@/shared/validators/common";
+import { idParamSchema } from "@/shared/validations/common";
 
 export const driversRoutes = new Hono<AppEnv>();
 

@@ -6,7 +6,7 @@ import {
   requirePermission,
   type AppEnv,
 } from "@/shared/middleware/auth.middleware";
-import { idParamSchema } from "@/shared/validators/common";
+import { idParamSchema } from "@/shared/validations/common";
 import { createEventSchema } from "./events.validation";
 import { createEvent, getShipmentEvents } from "./events.service";
 

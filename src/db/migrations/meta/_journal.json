@@ -50,6 +50,13 @@
       "when": 1780477488887,
       "tag": "0006_dry_the_professor",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1780488682009,
+      "tag": "0007_famous_mandarin",
+      "breakpoints": true
     }
   ]
 }
