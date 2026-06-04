@@ -7,21 +7,21 @@ import {
 
 const statements = {
   ...defaultStatements,
-  shipment: ["create", "read", "update", "delete"],
-  event: ["create", "read", "update", "delete"],
+  shipment: ["create", "read", "update"],
+  event: ["create", "read", "update"],
   location: ["create", "delete"],
 } as const;
 
 const ac = createAccessControl(statements);
 
 const owner = ac.newRole({
-  shipment: ["create", "read", "update", "delete"],
-  event: ["create", "read", "update", "delete"],
+  shipment: ["create", "read", "update"],
+  event: ["create", "read", "update"],
   ...ownerAc.statements,
 });
 
 const seller = ac.newRole({
-  shipment: ["create", "read", "update", "delete"],
+  shipment: ["create", "read", "update"],
   event: ["read"],
 });
 

@@ -17,7 +17,9 @@ export async function getShipmentById(shipmentId: string, orgId: string) {
   const [shipment] = await db
     .select()
     .from(shipments)
-    .where(and(eq(shipments.id, shipmentId), eq(shipments.organizationId, orgId)))
+    .where(
+      and(eq(shipments.id, shipmentId), eq(shipments.organizationId, orgId)),
+    )
     .limit(1);
   if (!shipment) {
     throw new HTTPException(404, { message: "Shipment not found" });
@@ -36,9 +38,15 @@ export async function getShipmentsByStatus(
   );
 }
 
-export async function getShipmentWithTimeline(shipmentId: string, orgId: string) {
+export async function getShipmentWithTimeline(
+  shipmentId: string,
+  orgId: string,
+) {
   const shipment = await db.query.shipments.findFirst({
-    where: and(eq(shipments.id, shipmentId), eq(shipments.organizationId, orgId)),
+    where: and(
+      eq(shipments.id, shipmentId),
+      eq(shipments.organizationId, orgId),
+    ),
     with: { events: { orderBy: asc(events.createdAt) } },
   });
 
@@ -47,7 +55,10 @@ export async function getShipmentWithTimeline(shipmentId: string, orgId: string)
   }
 
   const { destination, ...rest } = shipment;
-  return { ...rest, destination: { longitude: destination.x, latitude: destination.y } };
+  return {
+    ...rest,
+    destination: { longitude: destination.x, latitude: destination.y },
+  };
 }
 
 export async function createShipment(data: CreateShipmentInput, orgId: string) {
@@ -87,17 +98,11 @@ export async function updateShipment(
   const [updated] = await db
     .update(shipments)
     .set(updateData)
-    .where(and(eq(shipments.id, shipmentId), eq(shipments.organizationId, orgId)))
+    .where(
+      and(eq(shipments.id, shipmentId), eq(shipments.organizationId, orgId)),
+    )
     .returning();
   return updated ? formatShipment(updated) : null;
-}
-
-export async function deleteShipment(shipmentId: string, orgId: string) {
-  await getShipmentById(shipmentId, orgId);
-
-  await db
-    .delete(shipments)
-    .where(and(eq(shipments.id, shipmentId), eq(shipments.organizationId, orgId)));
 }
 
 export async function cancelShipment(shipmentId: string, orgId: string) {
@@ -112,7 +117,9 @@ export async function cancelShipment(shipmentId: string, orgId: string) {
   const [updated] = await db
     .update(shipments)
     .set({ status: "cancelled" })
-    .where(and(eq(shipments.id, shipmentId), eq(shipments.organizationId, orgId)))
+    .where(
+      and(eq(shipments.id, shipmentId), eq(shipments.organizationId, orgId)),
+    )
     .returning();
 
   return formatShipment(updated);
@@ -138,13 +145,17 @@ export async function assignDriver(
     .limit(1);
 
   if (!driverMembership) {
-    throw new HTTPException(404, { message: "Driver not found in this organization" });
+    throw new HTTPException(404, {
+      message: "Driver not found in this organization",
+    });
   }
 
   const [updated] = await db
     .update(shipments)
     .set({ driverUserId, status: "assigned" })
-    .where(and(eq(shipments.id, shipmentId), eq(shipments.organizationId, orgId)))
+    .where(
+      and(eq(shipments.id, shipmentId), eq(shipments.organizationId, orgId)),
+    )
     .returning();
 
   return formatShipment(updated);
