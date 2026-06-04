@@ -1,6 +1,6 @@
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { db } from "@/core/db";
-import { shipments, member } from "@/db/schema";
+import { shipments, member, events } from "@/db/schema";
 import type {
   ShipmentStatus,
   CreateShipmentInput,
@@ -34,6 +34,20 @@ export async function getShipmentsByStatus(
     [eq(shipments.organizationId, orgId), eq(shipments.status, status)],
     cursor,
   );
+}
+
+export async function getShipmentWithTimeline(shipmentId: string, orgId: string) {
+  const shipment = await db.query.shipments.findFirst({
+    where: and(eq(shipments.id, shipmentId), eq(shipments.organizationId, orgId)),
+    with: { events: { orderBy: asc(events.createdAt) } },
+  });
+
+  if (!shipment) {
+    throw new HTTPException(404, { message: "Shipment not found" });
+  }
+
+  const { destination, ...rest } = shipment;
+  return { ...rest, destination: { longitude: destination.x, latitude: destination.y } };
 }
 
 export async function createShipment(data: CreateShipmentInput, orgId: string) {
@@ -84,6 +98,24 @@ export async function deleteShipment(shipmentId: string, orgId: string) {
   await db
     .delete(shipments)
     .where(and(eq(shipments.id, shipmentId), eq(shipments.organizationId, orgId)));
+}
+
+export async function cancelShipment(shipmentId: string, orgId: string) {
+  const shipment = await getShipmentById(shipmentId, orgId);
+
+  if (shipment.status === "delivered" || shipment.status === "cancelled") {
+    throw new HTTPException(400, {
+      message: `Cannot cancel a shipment that is already ${shipment.status}`,
+    });
+  }
+
+  const [updated] = await db
+    .update(shipments)
+    .set({ status: "cancelled" })
+    .where(and(eq(shipments.id, shipmentId), eq(shipments.organizationId, orgId)))
+    .returning();
+
+  return formatShipment(updated);
 }
 
 export async function assignDriver(

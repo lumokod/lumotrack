@@ -1,9 +1,17 @@
 import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { db } from "@/core/db";
-import { driverLocations, shipments } from "@/db/schema";
+import { driverLocations, member, shipments, user } from "@/db/schema";
 import type { DriverLocationCreate } from "./drivers.types";
 import { formatShipment, paginateShipments } from "@/features/shipments/shipments.util";
+
+export async function getOrgDrivers(orgId: string) {
+  return db
+    .select({ id: user.id, name: user.name, email: user.email })
+    .from(member)
+    .innerJoin(user, eq(member.userId, user.id))
+    .where(and(eq(member.organizationId, orgId), eq(member.role, "driver")));
+}
 
 export async function addLocation(userId: string, data: DriverLocationCreate) {
   const [location] = await db

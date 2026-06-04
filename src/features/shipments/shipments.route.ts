@@ -2,11 +2,13 @@ import { Hono } from "hono";
 import {
   getAllShipments,
   getShipmentById,
+  getShipmentWithTimeline,
   getShipmentsByStatus,
   createShipment,
   updateShipment,
   deleteShipment,
   assignDriver,
+  cancelShipment,
 } from "./shipments.service";
 import {
   createShipmentSchema,
@@ -67,7 +69,7 @@ shipmentsRoutes.get(
   async (c) => {
     const { id } = c.req.valid("param");
     const organizationId = c.get("session").activeOrganizationId!;
-    const shipment = await getShipmentById(id, organizationId);
+    const shipment = await getShipmentWithTimeline(id, organizationId);
     return c.json(shipment);
   },
 );
@@ -107,6 +109,18 @@ shipmentsRoutes.delete(
     const organizationId = c.get("session").activeOrganizationId!;
     await deleteShipment(id, organizationId);
     return c.json({ message: "Shipment deleted successfully" });
+  },
+);
+
+shipmentsRoutes.patch(
+  "/:id/cancel",
+  requirePermission({ shipment: ["update"] }),
+  sValidator("param", idParamSchema),
+  async (c) => {
+    const { id } = c.req.valid("param");
+    const organizationId = c.get("session").activeOrganizationId!;
+    const shipment = await cancelShipment(id, organizationId);
+    return c.json(shipment);
   },
 );
 
