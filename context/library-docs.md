@@ -344,6 +344,38 @@ All emails use the same `FROM` address. Update the domain once a verified sender
 
 ---
 
+## BullMQ + Redis
+
+### Setup
+
+Queue and connection live in `src/lib/queue/client.ts`. Worker starts in `src/index.ts` via `startEmailWorker()`.
+
+### Enqueuing a job
+
+```ts
+import { emailQueue } from "@/lib/queue";
+
+await emailQueue.add("shipment-update", {
+  type: "shipment-update",
+  email: "user@example.com",
+  shipmentContent: "...",
+  eventStatus: "departed",
+});
+```
+
+### Adding a new job type
+
+1. Add a new variant to the `EmailJobData` union in `src/lib/queue/jobs.ts`
+2. Add a handler branch in the worker in `src/lib/queue/worker.ts`
+
+### Rules
+
+- Always enqueue after the DB transaction commits — never inside `db.transaction()`
+- The worker runs in the same process as the server (started in `src/index.ts`)
+- Failed jobs are logged via the `worker.on("failed")` handler — BullMQ retries automatically
+
+---
+
 ## Zod v4
 
 ### Import

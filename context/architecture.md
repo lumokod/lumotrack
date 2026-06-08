@@ -26,6 +26,11 @@ src/
       auth.ts     # sendVerificationEmail
       shipments.ts # sendShipmentUpdateEmail
       index.ts    # re-exports all helpers
+    queue/
+      client.ts   # BullMQ connection + emailQueue instance
+      jobs.ts     # EmailJobData discriminated union type
+      worker.ts   # startEmailWorker — processes email jobs
+      index.ts    # re-exports
   shared/
     middleware/   # auth.middleware.ts — session + RBAC
     validations/  # common.ts — shared Zod schemas
