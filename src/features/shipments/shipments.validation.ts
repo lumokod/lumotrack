@@ -15,6 +15,8 @@ const shipmentFieldsSchema = z.object({
     .transform((v) => new Date(v))
     .optional()
     .nullable(),
+  clientContactEmail: z.email().optional().nullable(),
+  clientContactPhone: z.string().min(7).max(20).optional().nullable(),
 });
 
 export const createShipmentSchema = shipmentFieldsSchema;

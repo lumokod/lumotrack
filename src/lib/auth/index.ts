@@ -4,7 +4,7 @@ import * as schema from "@/db/schema";
 import { admin, openAPI } from "better-auth/plugins";
 import { db } from "@/core/db";
 import { env } from "@/core/env";
-import { organizationPlugin } from "./plugins/org.plugin";
+import { organizationPlugin } from "./plugins/organization.plugin";
 import { sendVerificationEmail } from "../mail";
 
 export const auth = betterAuth({
@@ -22,6 +22,7 @@ export const auth = betterAuth({
     sendVerificationEmail: async ({ user, url }) => {
       await sendVerificationEmail(user.email, url);
     },
+    autoSignInAfterVerification: true,
   },
 
   plugins: [organizationPlugin, admin(), openAPI()],

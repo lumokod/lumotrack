@@ -1,16 +1,34 @@
 import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { db } from "@/core/db";
-import { driverLocations, member, shipments, user } from "@/db/schema";
+import { driverLocations, driverProfiles, member, shipments, user } from "@/db/schema";
 import type { DriverLocationCreate } from "./drivers.types";
 import { formatShipment, paginateShipments } from "@/features/shipments/shipments.util";
 
 export async function getOrgDrivers(orgId: string) {
   return db
-    .select({ id: user.id, name: user.name, email: user.email })
+    .select({ id: user.id, name: user.name, email: user.email, isAvailable: driverProfiles.isAvailable })
     .from(member)
     .innerJoin(user, eq(member.userId, user.id))
+    .leftJoin(
+      driverProfiles,
+      and(eq(driverProfiles.userId, member.userId), eq(driverProfiles.organizationId, orgId)),
+    )
     .where(and(eq(member.organizationId, orgId), eq(member.role, "driver")));
+}
+
+export async function toggleAvailability(userId: string, orgId: string, isAvailable: boolean) {
+  const [profile] = await db
+    .update(driverProfiles)
+    .set({ isAvailable })
+    .where(and(eq(driverProfiles.userId, userId), eq(driverProfiles.organizationId, orgId)))
+    .returning();
+
+  if (!profile) {
+    throw new HTTPException(404, { message: "Driver profile not found" });
+  }
+
+  return profile;
 }
 
 export async function addLocation(userId: string, data: DriverLocationCreate) {

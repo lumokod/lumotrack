@@ -11,15 +11,29 @@ import {
   removeLocation,
   getDriverShipments,
   getDriverShipmentById,
+  toggleAvailability,
 } from "./drivers.service";
 import type { DriverLocationCreate } from "./drivers.types";
 import { paginationSchema } from "@/features/shipments/shipments.validation";
 import { idParamSchema } from "@/shared/validations/common";
+import { z } from "zod";
 
 export const driversRoutes = new Hono<AppEnv>();
 
 driversRoutes.use(sessionMiddleware);
 driversRoutes.use(requireActiveOrg);
+
+driversRoutes.patch(
+  "/me/availability",
+  sValidator("json", z.object({ isAvailable: z.boolean() })),
+  async (c) => {
+    const user = c.get("user");
+    const session = c.get("session");
+    const { isAvailable } = c.req.valid("json");
+    const profile = await toggleAvailability(user.id, session.activeOrganizationId!, isAvailable);
+    return c.json(profile);
+  },
+);
 
 driversRoutes.post(
   "/me/locations",

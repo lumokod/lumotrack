@@ -23,6 +23,7 @@ Read these before working on any part of the project:
 | ORM        | Drizzle ORM                         |
 | Auth       | Better Auth (with Drizzle adapter)  |
 | AI         | Vercel AI SDK + `@ai-sdk/anthropic` |
+| Email      | Resend                              |
 | Validation | Zod v4                              |
 | UUID       | uuidv7                              |
 
@@ -48,4 +49,5 @@ ENVIRONMENT           # development | production | test
 REDIS_URL             # Redis connection string
 BETTER_AUTH_SECRET    # Auth encryption key
 BETTER_AUTH_URL       # Auth base URL (e.g. http://localhost:3000)
+RESEND_API_KEY        # Resend API key for transactional email
 ```

@@ -2,10 +2,11 @@ import { Resend } from "resend";
 import { env } from "@/core/env";
 
 const resend = new Resend(env.RESEND_API_KEY);
+const FROM = "LumoTrack <onboarding@resend.dev>";
 
 export async function sendVerificationEmail(email: string, url: string) {
   await resend.emails.send({
-    from: "LumoTrack <noreply@lumotrack.com>",
+    from: FROM,
     to: email,
     subject: "Verify your email address",
     html: `

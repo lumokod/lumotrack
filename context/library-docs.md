@@ -293,6 +293,38 @@ export function getTools(orgId: string) {
 
 ---
 
+## Resend
+
+### Setup
+
+One Resend client instance in `src/lib/mail.ts`, shared across all email helpers:
+
+```ts
+import { Resend } from "resend";
+import { env } from "@/core/env";
+
+const resend = new Resend(env.RESEND_API_KEY);
+```
+
+### Adding a new email
+
+Add a new exported function to `src/lib/mail.ts`:
+
+```ts
+export async function sendSomeEmail(to: string, data: SomeData) {
+  await resend.emails.send({
+    from: FROM,
+    to,
+    subject: "...",
+    html: `...`,
+  });
+}
+```
+
+All emails use the same `from` address. Update the domain once a verified sender is set up in Resend.
+
+---
+
 ## Zod v4
 
 ### Import

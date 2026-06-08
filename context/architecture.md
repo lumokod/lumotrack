@@ -17,9 +17,11 @@ src/
       tools/      # AI tool definitions (shipments.tools.ts, events.tools.ts)
       validations/ # AI response schemas (chatResponseSchema)
   lib/
-    auth.ts       # Better Auth configuration
-    plugins/
-      organization.plugin.ts  # Custom org plugin — roles, RBAC, hooks
+    auth/
+      index.ts    # Better Auth configuration
+      plugins/
+        org.plugin.ts  # Custom org plugin — roles, RBAC, hooks
+    mail.ts       # Resend client + transactional email helpers
   shared/
     middleware/   # auth.middleware.ts — session + RBAC
     validations/  # common.ts — shared Zod schemas
@@ -68,7 +70,7 @@ All domain entities use **uuidv7** as primary keys. PostGIS geometry columns (dr
 - `requireActiveOrg` — ensures `session.activeOrganizationId` is set; use on all org-scoped routes
 - `requirePermission(permissions)` — fine-grained RBAC via Better Auth permission API; checks the member's role against defined resource statements
 
-### Organization roles (defined in `src/lib/plugins/organization.plugin.ts`)
+### Organization roles (defined in `src/lib/auth/plugins/org.plugin.ts`)
 
 | Role     | Permissions                                                                          |
 | -------- | ------------------------------------------------------------------------------------ |

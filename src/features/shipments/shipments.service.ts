@@ -1,6 +1,6 @@
 import { and, asc, eq } from "drizzle-orm";
 import { db } from "@/core/db";
-import { shipments, member, events } from "@/db/schema";
+import { shipments, member, events, driverProfiles } from "@/db/schema";
 import type {
   ShipmentStatus,
   CreateShipmentInput,
@@ -130,24 +130,46 @@ export async function assignDriver(
   driverUserId: string,
   orgId: string,
 ) {
-  await getShipmentById(shipmentId, orgId);
+  const shipment = await getShipmentById(shipmentId, orgId);
 
-  const [driverMembership] = await db
-    .select()
-    .from(member)
-    .where(
-      and(
-        eq(member.userId, driverUserId),
-        eq(member.organizationId, orgId),
-        eq(member.role, "driver"),
-      ),
-    )
-    .limit(1);
+  if (!shipment.originAddressId) {
+    throw new HTTPException(400, { message: "Shipment must have a pickup address before assigning a driver" });
+  }
+
+  if (!shipment.clientContactEmail && !shipment.clientContactPhone) {
+    throw new HTTPException(400, { message: "Shipment must have a client contact email or phone before assigning a driver" });
+  }
+
+  const [[driverMembership], [driverProfile]] = await Promise.all([
+    db
+      .select()
+      .from(member)
+      .where(
+        and(
+          eq(member.userId, driverUserId),
+          eq(member.organizationId, orgId),
+          eq(member.role, "driver"),
+        ),
+      )
+      .limit(1),
+    db
+      .select()
+      .from(driverProfiles)
+      .where(
+        and(
+          eq(driverProfiles.userId, driverUserId),
+          eq(driverProfiles.organizationId, orgId),
+        ),
+      )
+      .limit(1),
+  ]);
 
   if (!driverMembership) {
-    throw new HTTPException(404, {
-      message: "Driver not found in this organization",
-    });
+    throw new HTTPException(404, { message: "Driver not found in this organization" });
+  }
+
+  if (!driverProfile?.isAvailable) {
+    throw new HTTPException(400, { message: "Driver is not available" });
   }
 
   const [updated] = await db

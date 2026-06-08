@@ -42,6 +42,8 @@ export const shipments = pgTable(
       mode: "xy",
       srid: 4326,
     }).notNull(),
+    clientContactEmail: text("client_contact_email"),
+    clientContactPhone: varchar("client_contact_phone", { length: 20 }),
     originAddressId: uuid("origin_address_id").references(() => addresses.id, {
       onDelete: "set null",
     }),

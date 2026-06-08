@@ -4,6 +4,8 @@ import {
   defaultStatements,
   ownerAc,
 } from "better-auth/plugins/organization/access";
+import { db } from "@/core/db";
+import { driverProfiles } from "@/db/schema";
 
 const statements = {
   ...defaultStatements,
@@ -54,6 +56,17 @@ export const organizationPlugin = organization({
   organizationLimit: 1,
 
   organizationHooks: {
+    afterAddMember: async ({ member: newMember }) => {
+      if (newMember.role === "driver") {
+        await db
+          .insert(driverProfiles)
+          .values({
+            userId: newMember.userId,
+            organizationId: newMember.organizationId,
+          })
+          .onConflictDoNothing();
+      }
+    },
     beforeCreateInvitation: async ({ invitation }) => ({
       data: { ...invitation, role: invitation.role || "driver" },
     }),
