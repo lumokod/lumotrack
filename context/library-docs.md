@@ -297,20 +297,39 @@ export function getTools(orgId: string) {
 
 ### Setup
 
-One Resend client instance in `src/lib/mail.ts`, shared across all email helpers:
+The Resend client and `FROM` constant live in `src/lib/mail/client.ts` and are shared across all email files:
 
 ```ts
 import { Resend } from "resend";
 import { env } from "@/core/env";
 
-const resend = new Resend(env.RESEND_API_KEY);
+export const resend = new Resend(env.RESEND_API_KEY);
+export const FROM = "LumoTrack <onboarding@resend.dev>";
 ```
+
+### Structure
+
+```
+src/lib/mail/
+  client.ts     # Resend instance + FROM constant
+  auth.ts       # sendVerificationEmail
+  shipments.ts  # sendShipmentUpdateEmail
+  index.ts      # re-exports everything
+```
+
+All consumers import from `@/lib/mail` — the index re-exports all helpers.
 
 ### Adding a new email
 
-Add a new exported function to `src/lib/mail.ts`:
+1. Create or pick the relevant domain file (e.g. `shipments.ts`, `auth.ts`)
+2. Import `resend` and `FROM` from `./client`
+3. Export the new function
+4. Re-export it from `index.ts`
 
 ```ts
+// src/lib/mail/shipments.ts
+import { resend, FROM } from "./client";
+
 export async function sendSomeEmail(to: string, data: SomeData) {
   await resend.emails.send({
     from: FROM,
@@ -321,7 +340,7 @@ export async function sendSomeEmail(to: string, data: SomeData) {
 }
 ```
 
-All emails use the same `from` address. Update the domain once a verified sender is set up in Resend.
+All emails use the same `FROM` address. Update the domain once a verified sender is set up in Resend.
 
 ---
 

@@ -21,7 +21,11 @@ src/
       index.ts    # Better Auth configuration
       plugins/
         org.plugin.ts  # Custom org plugin — roles, RBAC, hooks
-    mail.ts       # Resend client + transactional email helpers
+    mail/
+      client.ts   # Resend instance + FROM constant
+      auth.ts     # sendVerificationEmail
+      shipments.ts # sendShipmentUpdateEmail
+      index.ts    # re-exports all helpers
   shared/
     middleware/   # auth.middleware.ts — session + RBAC
     validations/  # common.ts — shared Zod schemas

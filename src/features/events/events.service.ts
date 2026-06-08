@@ -2,7 +2,16 @@ import { and, asc, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { db } from "@/core/db";
 import { events, shipments } from "@/db/schema";
-import type { CreateEventInput } from "./events.types";
+import type { CreateEventInput, EventStatus } from "./events.types";
+import type { ShipmentStatus } from "@/features/shipments/shipments.types";
+import { sendShipmentUpdateEmail } from "@/lib/mail";
+
+const EVENT_TO_SHIPMENT_STATUS: Partial<Record<EventStatus, ShipmentStatus>> = {
+  departed: "picked_up",
+  arrived: "in_transit",
+  out_for_delivery: "out_for_delivery",
+  delivered: "delivered",
+};
 
 export async function createEvent(
   shipmentId: string,
@@ -12,7 +21,12 @@ export async function createEvent(
   const [shipment] = await db
     .select()
     .from(shipments)
-    .where(and(eq(shipments.id, shipmentId), eq(shipments.driverUserId, driverUserId)))
+    .where(
+      and(
+        eq(shipments.id, shipmentId),
+        eq(shipments.driverUserId, driverUserId),
+      ),
+    )
     .limit(1);
 
   if (!shipment) {
@@ -21,10 +35,30 @@ export async function createEvent(
     });
   }
 
-  const [event] = await db
-    .insert(events)
-    .values({ ...data, shipmentId })
-    .returning();
+  const [event] = await db.transaction(async (tx) => {
+    const [inserted] = await tx
+      .insert(events)
+      .values({ ...data, shipmentId })
+      .returning();
+
+    const newStatus = EVENT_TO_SHIPMENT_STATUS[data.status];
+    if (newStatus) {
+      await tx
+        .update(shipments)
+        .set({ status: newStatus })
+        .where(eq(shipments.id, shipmentId));
+    }
+
+    return [inserted];
+  });
+
+  if (shipment.clientContactEmail) {
+    await sendShipmentUpdateEmail(
+      shipment.clientContactEmail,
+      shipment.content,
+      data.status,
+    );
+  }
 
   return event;
 }
@@ -33,7 +67,9 @@ export async function getShipmentEvents(shipmentId: string, orgId: string) {
   const [shipment] = await db
     .select()
     .from(shipments)
-    .where(and(eq(shipments.id, shipmentId), eq(shipments.organizationId, orgId)))
+    .where(
+      and(eq(shipments.id, shipmentId), eq(shipments.organizationId, orgId)),
+    )
     .limit(1);
 
   if (!shipment) {

@@ -1,8 +1,4 @@
-import { Resend } from "resend";
-import { env } from "@/core/env";
-
-const resend = new Resend(env.RESEND_API_KEY);
-const FROM = "LumoTrack <onboarding@resend.dev>";
+import { resend, FROM } from "./client";
 
 export async function sendVerificationEmail(email: string, url: string) {
   await resend.emails.send({

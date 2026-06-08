@@ -21,7 +21,7 @@
 1. **Schema** — add a new file in `src/db/schema/`, export the table from `src/db/schema/index.ts`
 2. **Migration** — run `pnpm generate` then `pnpm migrate`
 3. **Service** — `src/features/<feature>/<feature>.service.ts`; functions throw `HTTPException` on failure, always scope queries by `orgId`
-4. **Types** — `src/features/<feature>/<feature>.types.ts`; derive from Drizzle's `$inferInsert` / `$inferSelect` where possible
+4. **Types** — `src/features/<feature>/<feature>.types.ts`; derive from Drizzle's `$inferInsert` / `$inferSelect` where possible; all domain types (including enum aliases like `EventStatus`, `ShipmentStatus`) must live here — never redefine them inline in service files or other modules, always import from the owning feature's types file
 5. **Validation** — `src/features/<feature>/<feature>.validation.ts`; Zod schemas for request body/params/query
 6. **Route** — `src/features/<feature>/<feature>.route.ts`; apply `sessionMiddleware` → `requireActiveOrg` → `requirePermission(...)` in that order
 7. **Register** — import and mount in `src/core/app.ts` via `app.route("/api/<feature>", <feature>Routes)`
