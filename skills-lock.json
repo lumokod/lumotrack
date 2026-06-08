@@ -55,6 +55,12 @@
       "skillPath": "better-auth/organization/SKILL.md",
       "computedHash": "fa7a76e45a1f9632e6d63e92b476cf566e64f6e93a2c8ee00bc77b4a74008fbd"
     },
+    "react-email": {
+      "source": "resend/resend-skills",
+      "sourceType": "github",
+      "skillPath": "skills/react-email/SKILL.md",
+      "computedHash": "bfa6a36801b573de92f7675395b909fe23935c4c11526a18b9cef67042cfacb5"
+    },
     "recover": {
       "source": "JavaScript-Mastery-Pro/skills",
       "sourceType": "github",
