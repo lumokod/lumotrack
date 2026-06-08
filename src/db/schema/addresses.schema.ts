@@ -12,7 +12,7 @@ export const addresses = pgTable("addresses", {
   state: varchar({ length: 100 }),
   zipCode: varchar("zip_code", { length: 20 }),
   country: varchar({ length: 100 }).notNull(),
-  orgId: text("org_id")
+  organizationId: text("organization_id")
     .notNull()
     .references(() => organization.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at", { withTimezone: true })
@@ -26,7 +26,7 @@ export const addresses = pgTable("addresses", {
 
 export const addressesRelations = relations(addresses, ({ one }) => ({
   org: one(organization, {
-    fields: [addresses.orgId],
+    fields: [addresses.organizationId],
     references: [organization.id],
   }),
 }));
