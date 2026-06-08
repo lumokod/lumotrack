@@ -33,5 +33,5 @@ export const paginationSchema = z.object({
 });
 
 export const assignDriverSchema = z.object({
-  driverId: z.uuidv7(),
+  driverId: z.string().min(1),
 });

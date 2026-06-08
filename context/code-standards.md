@@ -9,7 +9,7 @@
 - **DB transactions:** Use `db.transaction()` for multi-table atomic writes
 - **Pagination:** Cursor-based using uuidv7 ordering; `PAGE_LIMIT = 20`
 - **Geometry — insert vs output:** PostGIS geometry columns are written as `{ x: longitude, y: latitude }` and read back as `row.column.x` / `row.column.y`; always strip via a `format*` util before returning in responses (output shape: `{ longitude, latitude }`)
-- **uuidv7 on insert:** PKs are not DB-generated — always pass `id: uuidv7()` explicitly in `.values()`
+- **uuidv7 on insert:** PKs are not DB-generated — always pass `id: uuidv7()` explicitly in `.values()`. Exception: Better Auth-managed tables (`user`, `session`, `organization`, `member`, `invitation`) use their own ID format — never validate these IDs with `z.uuidv7()`, use `z.string().min(1)` instead
 - **Hono context:** after `sessionMiddleware`, use `c.get("user").id` for the current user's ID and `c.get("session").activeOrganizationId!` for the active org ID
 
 ---
