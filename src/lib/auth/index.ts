@@ -4,8 +4,8 @@ import * as schema from "@/db/schema";
 import { admin, openAPI } from "better-auth/plugins";
 import { db } from "@/core/db";
 import { env } from "@/core/env";
-import { organizationPlugin } from "./plugins/organization.plugin";
-import { sendVerificationEmail } from "./mail";
+import { organizationPlugin } from "./plugins/org.plugin";
+import { sendVerificationEmail } from "../mail";
 
 export const auth = betterAuth({
   secret: env.BETTER_AUTH_SECRET,
