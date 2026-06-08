@@ -23,6 +23,7 @@ export const createShipmentSchema = shipmentFieldsSchema;
 
 export const updateShipmentSchema = shipmentFieldsSchema.partial().extend({
   status: z.enum(shipmentStatusEnum.enumValues).optional(),
+  originAddressId: z.uuidv7().optional().nullable(),
 });
 
 export const shipmentStatusSchema = z.enum(shipmentStatusEnum.enumValues);
