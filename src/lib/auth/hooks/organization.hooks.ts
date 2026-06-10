@@ -1,8 +1,11 @@
+import type { OrganizationOptions } from "better-auth/plugins/organization";
 import { db } from "@/core/db";
 import { driverProfiles } from "@/db/schema";
 
-export const organizationHooks = {
-  afterAddMember: async ({ member: newMember }: { member: { role: string; userId: string; organizationId: string } }) => {
+type OrgHooks = NonNullable<OrganizationOptions["organizationHooks"]>;
+
+export const organizationHooks: OrgHooks = {
+  afterAddMember: async ({ member: newMember }) => {
     if (newMember.role === "driver") {
       await db
         .insert(driverProfiles)
@@ -13,10 +16,10 @@ export const organizationHooks = {
         .onConflictDoNothing();
     }
   },
-  beforeCreateInvitation: async ({ invitation }: { invitation: Record<string, unknown> & { role?: string } }) => ({
+  beforeCreateInvitation: async ({ invitation }) => ({
     data: { ...invitation, role: invitation.role || "driver" },
   }),
-  beforeCreateOrganization: async ({ organization: org }: { organization: Record<string, unknown> & { slug?: string } }) => ({
+  beforeCreateOrganization: async ({ organization: org }) => ({
     data: { ...org, slug: org.slug?.toLowerCase() },
   }),
 };

@@ -41,6 +41,27 @@
 - For geometry columns, use a `format*` util to strip raw PostGIS values before returning (see `shipments.util.ts`)
 - Use `db.transaction()` for writes that span multiple tables
 
+### Adding a new RBAC resource
+
+1. Add the resource and its actions to `statements` in `src/lib/auth/plugins/organization.plugin.ts`
+2. Add the allowed actions to each role (`owner`, `seller`, `driver`) — omit entirely from a role to deny access
+3. Use `requirePermission({ <resource>: ["<action>"] })` in the route
+
+### Restricting a Better Auth built-in route
+
+Add a named route in `src/features/auth/auth.route.ts` **before** the `/*` catch-all, apply `sessionMiddleware` + `requirePermission`, then forward to `auth.handler`:
+
+```ts
+authRoutes.get(
+  "/organization/some-endpoint",
+  sessionMiddleware,
+  requirePermission({ resource: ["action"] }),
+  (c) => auth.handler(c.req.raw),
+);
+// catch-all must come after
+authRoutes.on(["GET", "POST"], "/*", (c) => auth.handler(c.req.raw));
+```
+
 ---
 
 ## Migrations

@@ -19,8 +19,11 @@ src/
   lib/
     auth/
       index.ts    # Better Auth configuration
+      hooks/
+        session.hooks.ts       # databaseHooks — auto-sets activeOrganizationId on session create
+        organization.hooks.ts  # afterAddMember, beforeCreateInvitation, beforeCreateOrganization
       plugins/
-        org.plugin.ts  # Custom org plugin — roles, RBAC, hooks
+        organization.plugin.ts  # Custom org plugin — roles, RBAC statements
     mail/
       client.ts   # Resend instance + FROM constant
       auth.ts     # sendVerificationEmail
@@ -48,7 +51,7 @@ All routes are prefixed `/api`. Protected routes require a valid session (via `s
 
 | Prefix                      | Auth                            | Notes                                                                                                   |
 | --------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `/api/auth/*`               | public                          | Delegated to Better Auth handler                                                                        |
+| `/api/auth/*`               | public                          | Delegated to Better Auth handler. Exception: `GET /api/auth/organization/get-full-organization` requires `organization: read` permission (intercepted before catch-all) |
 | `/api/drivers/me/locations`   | session + org                   | POST (add location), DELETE /:locationId (remove)                                                       |
 | `/api/drivers/me/shipments`   | session + org                   | GET (paginated list), GET /:id                                                                          |
 | `/api/drivers/me/availability`| session + org                   | PATCH — driver toggles isAvailable on their profile                                                     |
@@ -88,15 +91,17 @@ All domain entities use **uuidv7** as primary keys. PostGIS geometry columns (dr
 - `requireActiveOrg` — ensures `session.activeOrganizationId` is set; use on all org-scoped routes
 - `requirePermission(permissions)` — fine-grained RBAC via Better Auth permission API; checks the member's role against defined resource statements
 
-### Organization roles (defined in `src/lib/auth/plugins/org.plugin.ts`)
+`session.activeOrganizationId` is auto-populated on session creation via `databaseHooks` in `session.hooks.ts` — it looks up the user's earliest membership and sets the org automatically, so callers never start with a null active org unless they have no membership.
 
-| Role     | Permissions                                                                          |
-| -------- | ------------------------------------------------------------------------------------ |
-| `owner`  | shipment: create, read, update; event: create, read, update; + org owner statements |
-| `seller` | shipment: create, read, update; event: read                                          |
-| `driver` | shipment: read, update; event: create; location: create, delete                      |
+### Organization roles (defined in `src/lib/auth/plugins/organization.plugin.ts`)
 
-Resources: `shipment` (create/read/update), `event` (create/read/update), `location` (create/delete). Default invitation role is `driver`. Organization limit: 1 per user.
+| Role     | Permissions                                                                                              |
+| -------- | -------------------------------------------------------------------------------------------------------- |
+| `owner`  | shipment: create, read, update; event: create, read, update; organization: update, delete, read; + org owner statements |
+| `seller` | shipment: create, read, update; event: read; organization: read                                          |
+| `driver` | shipment: read, update; event: create; location: create, delete                                          |
+
+Resources: `shipment` (create/read/update), `event` (create/read/update), `location` (create/delete), `organization` (read/update/delete). Default invitation role is `driver`. Organization limit: 1 per user (creation; membership is unlimited).
 
 ---
 
