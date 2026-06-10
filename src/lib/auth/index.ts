@@ -6,7 +6,7 @@ import { db } from "@/core/db";
 import { env } from "@/core/env";
 import { organizationPlugin } from "./plugins/organization.plugin";
 import { sendVerificationEmail } from "../mail";
-import { databaseHooks } from "./hooks/db.hooks";
+import { databaseHooks } from "./hooks/database.hooks";
 
 export const auth = betterAuth({
   secret: env.BETTER_AUTH_SECRET,

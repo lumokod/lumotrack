@@ -20,7 +20,7 @@ src/
     auth/
       index.ts    # Better Auth configuration
       hooks/
-        session.hooks.ts       # databaseHooks — auto-sets activeOrganizationId on session create
+        database.hooks.ts      # databaseHooks (exported) — composes per-model slices; session slice auto-sets activeOrganizationId on create
         organization.hooks.ts  # afterAddMember, beforeCreateInvitation, beforeCreateOrganization
       plugins/
         organization.plugin.ts  # Custom org plugin — roles, RBAC statements
