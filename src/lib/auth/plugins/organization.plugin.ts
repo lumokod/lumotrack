@@ -4,11 +4,11 @@ import {
   defaultStatements,
   ownerAc,
 } from "better-auth/plugins/organization/access";
-import { db } from "@/core/db";
-import { driverProfiles } from "@/db/schema";
+import { organizationHooks } from "../hooks/organization.hooks";
 
 const statements = {
   ...defaultStatements,
+  organization: [...defaultStatements.organization, "read"],
   shipment: ["create", "read", "update"],
   event: ["create", "read", "update"],
   location: ["create", "delete"],
@@ -20,11 +20,13 @@ const owner = ac.newRole({
   shipment: ["create", "read", "update"],
   event: ["create", "read", "update"],
   ...ownerAc.statements,
+  organization: ["update", "delete", "read"],
 });
 
 const seller = ac.newRole({
   shipment: ["create", "read", "update"],
   event: ["read"],
+  organization: ["read"],
 });
 
 const driver = ac.newRole({
@@ -55,28 +57,5 @@ export const organizationPlugin = organization({
   },
   organizationLimit: 1,
 
-  organizationHooks: {
-    afterAddMember: async ({ member: newMember }) => {
-      if (newMember.role === "driver") {
-        await db
-          .insert(driverProfiles)
-          .values({
-            userId: newMember.userId,
-            organizationId: newMember.organizationId,
-          })
-          .onConflictDoNothing();
-      }
-    },
-    beforeCreateInvitation: async ({ invitation }) => ({
-      data: { ...invitation, role: invitation.role || "driver" },
-    }),
-    beforeCreateOrganization: async ({ organization: org }) => {
-      return {
-        data: {
-          ...org,
-          slug: org.slug?.toLowerCase(),
-        },
-      };
-    },
-  },
+  organizationHooks,
 });

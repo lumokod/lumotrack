@@ -6,6 +6,7 @@ import { db } from "@/core/db";
 import { env } from "@/core/env";
 import { organizationPlugin } from "./plugins/organization.plugin";
 import { sendVerificationEmail } from "../mail";
+import { sessionHooks } from "./hooks/session.hooks";
 
 export const auth = betterAuth({
   secret: env.BETTER_AUTH_SECRET,
@@ -24,6 +25,7 @@ export const auth = betterAuth({
     },
     autoSignInAfterVerification: true,
   },
+  databaseHooks: sessionHooks,
 
   plugins: [organizationPlugin, admin(), openAPI()],
 });
