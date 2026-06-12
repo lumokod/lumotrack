@@ -1,3 +1,3 @@
-export { emailQueue } from "./client";
-export { startEmailWorker } from "./worker";
-export type { EmailJobData, EmailJobName } from "./jobs";
+export { notificationQueue } from "./client";
+export { startNotificationWorker } from "./worker";
+export type { NotificationJobData, NotificationJobName } from "./jobs";

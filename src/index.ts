@@ -1,7 +1,7 @@
 import app from "./core/app";
-import { startEmailWorker } from "./lib/queue";
+import { startNotificationWorker } from "./lib/queue";
 
-startEmailWorker();
+startNotificationWorker();
 
 export default {
   port: 3000,

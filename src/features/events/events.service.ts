@@ -4,7 +4,7 @@ import { db } from "@/core/db";
 import { events, shipments } from "@/db/schema";
 import type { CreateEventInput, EventStatus } from "./events.types";
 import type { ShipmentStatus } from "@/features/shipments/shipments.types";
-import { emailQueue } from "@/lib/queue";
+import { notificationQueue } from "@/lib/queue";
 
 const EVENT_TO_SHIPMENT_STATUS: Partial<Record<EventStatus, ShipmentStatus>> = {
   departed: "picked_up",
@@ -53,9 +53,18 @@ export async function createEvent(
   });
 
   if (shipment.clientContactEmail) {
-    await emailQueue.add("shipment-update", {
+    await notificationQueue.add("shipment-update", {
       type: "shipment-update",
       email: shipment.clientContactEmail,
+      shipmentContent: shipment.content,
+      eventStatus: data.status,
+    });
+  }
+
+  if (shipment.clientContactPhone) {
+    await notificationQueue.add("sms-shipment-update", {
+      type: "sms-shipment-update",
+      phone: shipment.clientContactPhone,
       shipmentContent: shipment.content,
       eventStatus: data.status,
     });

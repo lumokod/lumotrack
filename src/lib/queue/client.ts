@@ -3,4 +3,4 @@ import { env } from "@/core/env";
 
 export const connection = { url: env.REDIS_URL };
 
-export const emailQueue = new Queue("email", { connection });
+export const notificationQueue = new Queue("notifications", { connection });
