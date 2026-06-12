@@ -49,7 +49,12 @@ async function persistEvent(shipmentId: string, data: CreateEventInput, delivery
   const [event] = await db.transaction(async (tx) => {
     const [inserted] = await tx
       .insert(events)
-      .values({ ...data, shipmentId })
+      .values({
+        shipmentId,
+        status: data.status,
+        address: data.address,
+        description: data.description,
+      })
       .returning();
 
     const newStatus = EVENT_TO_SHIPMENT_STATUS[data.status];
