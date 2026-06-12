@@ -32,10 +32,14 @@ src/
       templates/
         ShipmentUpdateEmail.tsx  # React Email template (requires /** @jsxImportSource react */ pragma)
         VerificationEmail.tsx    # React Email template (requires /** @jsxImportSource react */ pragma)
+    sms/
+      client.ts   # Twilio client instance + FROM constant
+      shipments.ts # sendShipmentUpdateSms — includes delivery code in out_for_delivery messages
+      index.ts    # re-exports all helpers
     queue/
-      client.ts   # BullMQ connection + emailQueue instance
-      jobs.ts     # EmailJobData discriminated union type
-      worker.ts   # startEmailWorker — processes email jobs
+      client.ts   # BullMQ connection + notificationQueue instance + addNotification helper
+      jobs.ts     # NotificationJobData discriminated union type
+      worker.ts   # startNotificationWorker — processes email and SMS jobs
       index.ts    # re-exports
   shared/
     middleware/   # auth.middleware.ts — session + RBAC
@@ -56,7 +60,7 @@ All routes are prefixed `/api`. Protected routes require a valid session (via `s
 | `/api/drivers/me/shipments`   | session + org                   | GET (paginated list), GET /:id                                                                          |
 | `/api/drivers/me/availability`| session + org                   | PATCH — driver toggles isAvailable on their profile                                                     |
 | `/api/shipments`              | session + org                   | GET (paginated), GET /status/:status, GET /:id, POST, PATCH /:id, PATCH /:id/cancel, PATCH /:id/assign |
-| `/api/shipments/:id/events`   | session + org                   | POST (log checkpoint → updates shipment status + enqueues email), GET (event history)                   |
+| `/api/shipments/:id/events`   | session + org                   | POST (log checkpoint → updates shipment status + enqueues notifications), GET (event history)            |
 | `/api/addresses`              | session + org                   | GET (list org addresses), POST (create), DELETE /:id                                                    |
 | `/api/ai`                     | session + org + shipment:create | POST /chat — AI shipment assistant                                                                      |
 
@@ -67,7 +71,7 @@ All routes are prefixed `/api`. Protected routes require a valid session (via `s
 - **auth tables** (`auth.schema.ts`) — user, session, account, verification, organization, member, invitation; session has `activeOrganizationId`
 - **drivers** (`drivers.schema.ts`) — `driverLocations` (PostGIS POINT geometry, SRID 4326); GiST spatial index; `driverProfiles` (isAvailable boolean, unique per userId+organizationId, auto-created via `afterAddMember` hook when role is `driver`)
 - **addresses** (`addresses.schema.ts`) — addresses; `street`, `city`, `country` are required; `state` and `zipCode` are nullable; FK to organization with cascade delete
-- **shipments** (`shipments.schema.ts`) — `shipments` with PostGIS `destination` (coords for live tracking + reverse geocoding on frontend), nullable `originAddressId` FK to addresses (assigned after creation), nullable `clientContactEmail` + `clientContactPhone` (snapshot of recipient contact at time of creation), FK to organization, nullable user FK (assigned driver), status enum (`created | assigned | picked_up | in_transit | out_for_delivery | delivered | cancelled`)
+- **shipments** (`shipments.schema.ts`) — `shipments` with PostGIS `destination` (coords for live tracking + reverse geocoding on frontend), nullable `originAddressId` FK to addresses (assigned after creation), nullable `clientContactEmail` + `clientContactPhone` (snapshot of recipient contact at time of creation), nullable `deliveryCode` varchar(6) (generated when driver logs `out_for_delivery`, cleared after `delivered`), FK to organization, nullable user FK (assigned driver), status enum (`created | assigned | picked_up | in_transit | out_for_delivery | delivered | cancelled`)
 - **events** (`events.schema.ts`) — shipment checkpoint log; each row has `status` (own `eventStatusEnum`: `departed | arrived | delivery_attempted | held_at_facility | customs_cleared | out_for_delivery | delivered | returned`), `address` (plain text, no geometry), optional `description`, FK to shipments with cascade delete
 
 All domain entities use **uuidv7** as primary keys. PostGIS geometry columns (drivers, shipments) have GiST spatial indexes. Events use plain text address — no geometry needed since they are a history log, not a tracking source.
@@ -78,7 +82,9 @@ All domain entities use **uuidv7** as primary keys. PostGIS geometry columns (dr
 - `originAddressId` on shipments is nullable — seller creates the shipment first, assigns a pickup address later.
 - `clientContactEmail` + `clientContactPhone` on shipments are nullable at creation — both must be set before a driver can be assigned.
 - Before assigning a driver: shipment must have `originAddressId`, at least one of `clientContactEmail`/`clientContactPhone`, and the driver's `driverProfiles.isAvailable` must be `true`.
-- Logging an event updates the shipment status atomically (transaction) and enqueues a BullMQ email job if `clientContactEmail` is set. Email is never sent inline.
+- Logging an event updates the shipment status atomically (transaction) and enqueues notifications after the transaction commits — never inline, never inside `db.transaction()`. Email is enqueued for all statuses if `clientContactEmail` is set. SMS is enqueued only for `out_for_delivery` and `delivered` if `clientContactPhone` is set.
+- When a driver logs `out_for_delivery`: a 6-digit `deliveryCode` is generated, stored on the shipment, and included in the SMS to the client. The client shares this code with the driver to confirm delivery.
+- When a driver logs `delivered`: `confirmationCode` is required in the request body and must match `shipment.deliveryCode`. On success the code is cleared from the shipment.
 - Event→status mapping: `departed`→`picked_up`, `arrived`→`in_transit`, `out_for_delivery`→`out_for_delivery`, `delivered`→`delivered`. Other events are checkpoints only.
 - Live driver tracking is done via `driverLocations` (updated in real-time), not via events.
 - Events are immutable — no update or delete endpoints.

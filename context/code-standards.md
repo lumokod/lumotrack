@@ -12,7 +12,7 @@
 - **uuidv7 on insert:** PKs are not DB-generated — always pass `id: uuidv7()` explicitly in `.values()`. Exception: Better Auth-managed tables (`user`, `session`, `organization`, `member`, `invitation`) use their own ID format — never validate these IDs with `z.uuidv7()`, use `z.string().min(1)` instead
 - **Hono context:** after `sessionMiddleware`, use `c.get("user").id` for the current user's ID and `c.get("session").activeOrganizationId!` for the active org ID
 - **Email templates:** React Email `.tsx` files in `src/lib/mail/templates/` must have `/** @jsxImportSource react */` as the first line — this overrides the global `hono/jsx` tsconfig setting. Never remove this pragma; linters may strip it but it is load-bearing
-- **Background jobs:** never send emails inline from a service. Always enqueue via `emailQueue.add(...)` after the DB transaction commits — never inside `db.transaction()`. Add new job types to `EmailJobData` in `src/lib/queue/jobs.ts` and handle them in `src/lib/queue/worker.ts`
+- **Background jobs:** never send emails or SMS inline from a service. Always enqueue via `addNotification(data)` (from `@/lib/queue`) after the DB transaction commits — never inside `db.transaction()`. Add new job types to `NotificationJobData` in `src/lib/queue/jobs.ts` and handle them in `src/lib/queue/worker.ts`. `addNotification` derives the BullMQ job name from `data.type` automatically — never call `notificationQueue.add(...)` directly
 
 ---
 
