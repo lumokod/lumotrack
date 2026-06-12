@@ -15,7 +15,7 @@ export function startNotificationWorker() {
       } else if (data.type === "verification") {
         await sendVerificationEmail(data.email, data.url);
       } else if (data.type === "sms-shipment-update") {
-        await sendShipmentUpdateSms(data.phone, data.shipmentContent, data.eventStatus);
+        await sendShipmentUpdateSms(data.phone, data.shipmentContent, data.eventStatus, data.deliveryCode);
       }
     },
     { connection },

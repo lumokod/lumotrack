@@ -16,11 +16,14 @@ export async function sendShipmentUpdateSms(
   phone: string,
   shipmentContent: string,
   eventStatus: EventStatus,
+  deliveryCode?: string,
 ) {
   const label = EVENT_STATUS_LABEL[eventStatus];
-  await twilioClient.messages.create({
-    from: FROM,
-    to: phone,
-    body: `LumoTrack: Your shipment "${shipmentContent}" is now ${label}.`,
-  });
+
+  const body =
+    eventStatus === "out_for_delivery" && deliveryCode
+      ? `LumoTrack: Your shipment "${shipmentContent}" is out for delivery. Share this code with your driver to confirm delivery: ${deliveryCode}`
+      : `LumoTrack: Your shipment "${shipmentContent}" is now ${label}.`;
+
+  await twilioClient.messages.create({ from: FROM, to: phone, body });
 }

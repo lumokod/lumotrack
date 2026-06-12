@@ -1,3 +1,3 @@
-export { notificationQueue } from "./client";
+export { notificationQueue, addNotification } from "./client";
 export { startNotificationWorker } from "./worker";
-export type { NotificationJobData, NotificationJobName } from "./jobs";
+export type { NotificationJobData } from "./jobs";

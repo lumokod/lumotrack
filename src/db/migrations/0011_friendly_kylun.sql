@@ -1,0 +1,1 @@
+ALTER TABLE "shipments" ADD COLUMN "delivery_code" varchar(6);
