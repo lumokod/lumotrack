@@ -24,6 +24,7 @@ Read these before working on any part of the project:
 | Auth       | Better Auth (with Drizzle adapter)  |
 | AI         | Vercel AI SDK + `@ai-sdk/anthropic` |
 | Email      | Resend                              |
+| SMS        | Twilio                              |
 | Validation | Zod v4                              |
 | UUID       | uuidv7                              |
 
@@ -50,4 +51,7 @@ REDIS_URL             # Redis connection string
 BETTER_AUTH_SECRET    # Auth encryption key
 BETTER_AUTH_URL       # Auth base URL (e.g. http://localhost:3000)
 RESEND_API_KEY        # Resend API key for transactional email
+TWILIO_ACCOUNT_SID    # Twilio account SID
+TWILIO_AUTH_TOKEN     # Twilio auth token
+TWILIO_PHONE_NUMBER   # Twilio sender phone number (E.164 format)
 ```
