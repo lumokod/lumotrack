@@ -5,6 +5,7 @@ import { events, shipments } from "@/db/schema";
 import type { CreateEventInput, EventStatus } from "./events.types";
 import type { Shipment, ShipmentStatus } from "@/features/shipments/shipments.types";
 import { addNotification } from "@/lib/queue";
+import { buildReviewUrl } from "@/features/reviews/review-link";
 
 const EVENT_TO_SHIPMENT_STATUS: Partial<Record<EventStatus, ShipmentStatus>> = {
   departed: "picked_up",
@@ -97,6 +98,29 @@ async function enqueueNotifications(
       eventStatus,
       ...(eventStatus === "out_for_delivery" && { deliveryCode }),
     });
+  }
+
+  // On delivery, invite the recipient to review via a signed link.
+  if (eventStatus === "delivered") {
+    const reviewUrl = buildReviewUrl(shipment.id);
+
+    if (shipment.clientContactEmail) {
+      await addNotification({
+        type: "review-request",
+        email: shipment.clientContactEmail,
+        shipmentContent: shipment.content,
+        reviewUrl,
+      });
+    }
+
+    if (shipment.clientContactPhone) {
+      await addNotification({
+        type: "sms-review-request",
+        phone: shipment.clientContactPhone,
+        shipmentContent: shipment.content,
+        reviewUrl,
+      });
+    }
   }
 }
 

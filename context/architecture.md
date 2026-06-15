@@ -14,6 +14,7 @@ src/
     shipments/
     events/
     verification/ # org KYB submission + admin review (no .types.ts — types live in .validation.ts)
+    reviews/      # customer delivery reviews via signed link (review-link.ts = HMAC sign/verify; types in .validation.ts)
     ai/
       tools/      # AI tool definitions (shipments.tools.ts, events.tools.ts)
       validations/ # AI response schemas (chatResponseSchema)
@@ -29,13 +30,16 @@ src/
       client.ts   # Resend instance + FROM constant
       auth.ts     # sendVerificationEmail
       shipments.ts # sendShipmentUpdateEmail
+      reviews.ts  # sendReviewRequestEmail
       index.ts    # re-exports all helpers
       templates/
         ShipmentUpdateEmail.tsx  # React Email template (requires /** @jsxImportSource react */ pragma)
         VerificationEmail.tsx    # React Email template (requires /** @jsxImportSource react */ pragma)
+        ReviewRequestEmail.tsx   # React Email template (requires /** @jsxImportSource react */ pragma)
     sms/
       client.ts   # Twilio client instance + FROM constant
       shipments.ts # sendShipmentUpdateSms — includes delivery code in out_for_delivery messages
+      reviews.ts  # sendReviewRequestSms — review link sent on delivery
       index.ts    # re-exports all helpers
     queue/
       client.ts   # BullMQ connection + notificationQueue instance + addNotification helper
@@ -64,6 +68,7 @@ All routes are prefixed `/api`. Protected routes require a valid session (via `s
 | `/api/shipments/:id/events`   | session + org                   | POST (log checkpoint → updates shipment status + enqueues notifications), GET (event history)            |
 | `/api/addresses`              | session + org                   | GET (list org addresses), POST (create), DELETE /:id                                                    |
 | `/api/verification`           | session (+ org / admin per route) | GET (own org KYB, `organization:read`), POST (submit/resubmit, `organization:update`); GET /pending and PATCH /:organizationId/review require platform admin |
+| `/api/reviews`                | mixed                           | POST (public — customer submits via signed link, HMAC-authorized, no session), GET (session + org + `shipment:read` — list org's reviews) |
 | `/api/ai`                     | session + org + shipment:create | POST /chat — AI shipment assistant                                                                      |
 
 ---
@@ -75,6 +80,7 @@ All routes are prefixed `/api`. Protected routes require a valid session (via `s
 - **drivers** (`drivers.schema.ts`) — `driverLocations` (PostGIS POINT geometry, SRID 4326); GiST spatial index; `driverProfiles` (isAvailable boolean, unique per userId+organizationId, auto-created via `afterAddMember` hook when role is `driver`)
 - **addresses** (`addresses.schema.ts`) — addresses; `street`, `city`, `country` are required; `state` and `zipCode` are nullable; FK to organization with cascade delete
 - **shipments** (`shipments.schema.ts`) — `shipments` with PostGIS `destination` (coords for live tracking + reverse geocoding on frontend), nullable `originAddressId` FK to addresses (assigned after creation), nullable `clientContactEmail` + `clientContactPhone` (snapshot of recipient contact at time of creation), nullable `deliveryCode` varchar(6) (generated when driver logs `out_for_delivery`, cleared after `delivered`), FK to organization, nullable user FK (assigned driver), status enum (`created | assigned | picked_up | in_transit | out_for_delivery | delivered | cancelled`)
+- **reviews** (`reviews.schema.ts`) — customer delivery review, one-to-one with shipment (unique `shipmentId` FK, cascade delete). `organizationId` and `driverUserId` are denormalized from the shipment (so per-org/per-driver rating aggregates need no join; `driverUserId` is `set null`). `rating` is `smallint` (1–5, enforced in Zod, not the DB), `comment` is optional varchar(1000). Indexed on `organizationId` and `driverUserId`
 - **events** (`events.schema.ts`) — shipment checkpoint log; each row has `status` (own `eventStatusEnum`: `departed | arrived | delivery_attempted | held_at_facility | customs_cleared | out_for_delivery | delivered | returned`), `address` (plain text, no geometry), optional `description`, FK to shipments with cascade delete
 
 All domain entities use **uuidv7** as primary keys. PostGIS geometry columns (drivers, shipments) have GiST spatial indexes. Events use plain text address — no geometry needed since they are a history log, not a tracking source.
@@ -91,6 +97,7 @@ All domain entities use **uuidv7** as primary keys. PostGIS geometry columns (dr
 - Event→status mapping: `departed`→`picked_up`, `arrived`→`in_transit`, `out_for_delivery`→`out_for_delivery`, `delivered`→`delivered`. Other events are checkpoints only.
 - Live driver tracking is done via `driverLocations` (updated in real-time), not via events.
 - Events are immutable — no update or delete endpoints.
+- Reviews: when a shipment is logged `delivered`, `enqueueNotifications` also enqueues a review request (email if `clientContactEmail`, SMS if `clientContactPhone`) containing a signed review link. The customer is not a logged-in user, so the link is authorized by an **HMAC token** over the `shipmentId` (`review-link.ts`, signed with `BETTER_AUTH_SECRET`) rather than a session — stateless, no token is persisted. The public `POST /api/reviews` verifies the token, requires the shipment to be `delivered`, and the `unique(shipmentId)` constraint enforces a single review per shipment. Link base is `BETTER_AUTH_URL`.
 - Org verification (KYB): the owner submits/resubmits business data via `POST /api/verification` — this upserts the `organizationVerification` record and resets both it and the org's `verificationStatus` to `pending` in a transaction. A platform admin reviews via `PATCH /api/verification/:organizationId/review` (decision `verified | rejected`; `rejectionReason` required when rejecting), which only acts on a `pending` record and updates the record's `status` and the org's `verificationStatus` together in one transaction. Existing orgs default to `pending`, so deploying the `requireVerifiedOrg` gate blocks current sellers until verified — grandfather them with a one-off `UPDATE organization SET verification_status = 'verified'` if needed.
 
 ---
