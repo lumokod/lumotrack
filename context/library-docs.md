@@ -28,6 +28,8 @@ myRoutes.use(requireActiveOrg);    // 2. ensure org is set
 // requirePermission goes per-route, not here
 ```
 
+Exception: routes that aren't org-scoped apply middleware per-route instead of at the top — e.g. the public `POST /api/reviews` (no session; authorized by an HMAC token in the body) and the admin-only verification routes (`requireAdmin`, no `requireActiveOrg`). A single router can mix public/org/admin routes this way.
+
 ### Validation
 
 Use `sValidator` from `@hono/standard-validator`, then access with `c.req.valid()`:
@@ -119,9 +121,13 @@ Never manually define user/session types — always use `auth.$Infer`.
 
 ### Organization rules
 
-- One org per user (enforced by `organizationLimit: 1` in the plugin)
+- One org per user: `organizationLimit: 1` caps org *creation*, and the `beforeAddMember` hook in `organization.hooks.ts` blocks joining a second org via invitation (throws `400 "User already belongs to an organization"`)
 - Default invitation role is `driver`
 - `session.activeOrganizationId` is the org scoping key used in every DB query
+
+### Session caching
+
+`cookieCache` is enabled in `src/lib/auth/index.ts` — `auth.api.getSession` serves session+user from a signed cookie (no DB hit) for `maxAge` (5 min), then revalidates against the store. Middleware code is unchanged. Trade-off: session changes (role/ban/revoke) lag up to `maxAge`.
 
 ---
 
@@ -314,10 +320,12 @@ src/lib/mail/
   client.ts     # Resend instance + FROM constant
   auth.ts       # sendVerificationEmail
   shipments.ts  # sendShipmentUpdateEmail
+  reviews.ts    # sendReviewRequestEmail
   index.ts      # re-exports everything
+  templates/    # React Email .tsx templates (first line must be /** @jsxImportSource react */)
 ```
 
-All consumers import from `@/lib/mail` — the index re-exports all helpers.
+All consumers import from `@/lib/mail` — the index re-exports all helpers. Non-trivial emails render a React Email template via `render(createElement(Template, props))` rather than an inline HTML string (see `shipments.ts` / `reviews.ts`).
 
 ### Adding a new email
 
@@ -348,14 +356,16 @@ All emails use the same `FROM` address. Update the domain once a verified sender
 
 ### Setup
 
-Queue and connection live in `src/lib/queue/client.ts`. Worker starts in `src/index.ts` via `startEmailWorker()`.
+Queue and connection live in `src/lib/queue/client.ts`. Worker starts in `src/index.ts` via `startNotificationWorker()`.
 
 ### Enqueuing a job
 
-```ts
-import { emailQueue } from "@/lib/queue";
+Use the `addNotification(data)` helper — it derives the BullMQ job name from `data.type` automatically. Never call `notificationQueue.add(...)` directly:
 
-await emailQueue.add("shipment-update", {
+```ts
+import { addNotification } from "@/lib/queue";
+
+await addNotification({
   type: "shipment-update",
   email: "user@example.com",
   shipmentContent: "...",
@@ -365,7 +375,7 @@ await emailQueue.add("shipment-update", {
 
 ### Adding a new job type
 
-1. Add a new variant to the `EmailJobData` union in `src/lib/queue/jobs.ts`
+1. Add a new variant to the `NotificationJobData` union in `src/lib/queue/jobs.ts`
 2. Add a handler branch in the worker in `src/lib/queue/worker.ts`
 
 ### Rules
