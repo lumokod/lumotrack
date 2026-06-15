@@ -22,7 +22,7 @@ src/
       index.ts    # Better Auth configuration
       hooks/
         database.hooks.ts      # databaseHooks (exported) — composes per-model slices; session slice auto-sets activeOrganizationId on create
-        organization.hooks.ts  # afterAddMember, beforeCreateInvitation, beforeCreateOrganization
+        organization.hooks.ts  # beforeAddMember (one-org-per-user enforcement), afterAddMember, beforeCreateInvitation, beforeCreateOrganization
       plugins/
         organization.plugin.ts  # Custom org plugin — roles, RBAC statements
     mail/
@@ -103,7 +103,9 @@ All domain entities use **uuidv7** as primary keys. PostGIS geometry columns (dr
 - `requireVerifiedOrg` — loads the active org and rejects (403) unless its `verificationStatus === "verified"`; applied to `POST /api/shipments` so unverified orgs cannot create shipments
 - `requireAdmin` — platform-level gate; requires `user.role === "admin"` (from the Better Auth `admin()` plugin). Used for org verification review. Distinct from org RBAC: org roles (`owner`/`seller`/`driver`) are scoped to a single org, whereas admin is platform-wide. No user is an admin by default — promote via `UPDATE "user" SET role = 'admin'`
 
-`session.activeOrganizationId` is auto-populated on session creation via `databaseHooks` in `session.hooks.ts` — it looks up the user's earliest membership and sets the org automatically, so callers never start with a null active org unless they have no membership.
+A user belongs to **at most one organization**. Org creation is capped at 1 per user (`organizationLimit: 1`), and `beforeAddMember` in `organization.hooks.ts` blocks the only other path into a second org — accepting an invitation while already a member (throws `400 "User already belongs to an organization"`).
+
+`session.activeOrganizationId` is auto-populated on session creation via `databaseHooks` in `database.hooks.ts` — it looks up the user's (single) membership and sets the org automatically, so callers never start with a null active org unless they have no membership.
 
 ### Organization roles (defined in `src/lib/auth/plugins/organization.plugin.ts`)
 
@@ -113,7 +115,7 @@ All domain entities use **uuidv7** as primary keys. PostGIS geometry columns (dr
 | `seller` | shipment: create, read, update; event: read; organization: read                                          |
 | `driver` | shipment: read, update; event: create; location: create, delete                                          |
 
-Resources: `shipment` (create/read/update), `event` (create/read/update), `location` (create/delete), `organization` (read/update/delete). Default invitation role is `driver`. Organization limit: 1 per user (creation; membership is unlimited).
+Resources: `shipment` (create/read/update), `event` (create/read/update), `location` (create/delete), `organization` (read/update/delete). Default invitation role is `driver`. A user belongs to at most one org: creation is capped at 1 (`organizationLimit: 1`) and `beforeAddMember` rejects joining a second org (see Authorization Model).
 
 ---
 
