@@ -97,6 +97,7 @@ export const organization = pgTable(
     createdAt: timestamp("created_at").notNull(),
     metadata: text("metadata"),
     color: text("color").default("#f59e0b"),
+    verificationStatus: text("verification_status").default("pending"),
   },
   (table) => [uniqueIndex("organization_slug_uidx").on(table.slug)],
 );

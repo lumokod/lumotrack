@@ -52,6 +52,11 @@ export const organizationPlugin = organization({
           required: false,
           defaultValue: "#f59e0b",
         },
+        verificationStatus: {
+          type: "string",
+          required: false,
+          defaultValue: "pending",
+        },
       },
     },
   },

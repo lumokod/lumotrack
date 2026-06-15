@@ -20,6 +20,7 @@ import {
   sessionMiddleware,
   requireActiveOrg,
   requirePermission,
+  requireVerifiedOrg,
   type AppEnv,
 } from "@/shared/middleware/auth.middleware";
 import { sValidator } from "@hono/standard-validator";
@@ -74,6 +75,7 @@ shipmentsRoutes.get(
 
 shipmentsRoutes.post(
   "/",
+  requireVerifiedOrg,
   requirePermission({ shipment: ["create"] }),
   sValidator("json", createShipmentSchema),
   async (c) => {

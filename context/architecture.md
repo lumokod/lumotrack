@@ -13,6 +13,7 @@ src/
     drivers/
     shipments/
     events/
+    verification/ # org KYB submission + admin review (no .types.ts — types live in .validation.ts)
     ai/
       tools/      # AI tool definitions (shipments.tools.ts, events.tools.ts)
       validations/ # AI response schemas (chatResponseSchema)
@@ -62,13 +63,15 @@ All routes are prefixed `/api`. Protected routes require a valid session (via `s
 | `/api/shipments`              | session + org                   | GET (paginated), GET /status/:status, GET /:id, POST, PATCH /:id, PATCH /:id/cancel, PATCH /:id/assign |
 | `/api/shipments/:id/events`   | session + org                   | POST (log checkpoint → updates shipment status + enqueues notifications), GET (event history)            |
 | `/api/addresses`              | session + org                   | GET (list org addresses), POST (create), DELETE /:id                                                    |
+| `/api/verification`           | session (+ org / admin per route) | GET (own org KYB, `organization:read`), POST (submit/resubmit, `organization:update`); GET /pending and PATCH /:organizationId/review require platform admin |
 | `/api/ai`                     | session + org + shipment:create | POST /chat — AI shipment assistant                                                                      |
 
 ---
 
 ## Database Schema
 
-- **auth tables** (`auth.schema.ts`) — user, session, account, verification, organization, member, invitation; session has `activeOrganizationId`
+- **auth tables** (`auth.schema.ts`) — user, session, account, verification, organization, member, invitation; session has `activeOrganizationId`. `organization` carries two custom `additionalFields` columns: `color` (default `#f59e0b`) and `verificationStatus` (`pending | verified | rejected`, default `pending`) — the latter is the fast gate column read by `requireVerifiedOrg`
+- **organization verification** (`organization-verification.schema.ts`) — `organizationVerification`, the full KYB record, one-to-one with organization (unique `organizationId` FK, cascade delete). Holds submitted business data (`legalName`, `registrationNumber`, `taxId`, contact fields, `documents` jsonb) plus the review workflow (`status` via `verificationStatusEnum`, `rejectionReason`, `reviewedBy` user FK, `reviewedAt`); indexed on `status`. Kept separate from the auth `organization` table so Better Auth never touches it; the org's `verificationStatus` column mirrors this record's `status` and is kept in sync within a transaction
 - **drivers** (`drivers.schema.ts`) — `driverLocations` (PostGIS POINT geometry, SRID 4326); GiST spatial index; `driverProfiles` (isAvailable boolean, unique per userId+organizationId, auto-created via `afterAddMember` hook when role is `driver`)
 - **addresses** (`addresses.schema.ts`) — addresses; `street`, `city`, `country` are required; `state` and `zipCode` are nullable; FK to organization with cascade delete
 - **shipments** (`shipments.schema.ts`) — `shipments` with PostGIS `destination` (coords for live tracking + reverse geocoding on frontend), nullable `originAddressId` FK to addresses (assigned after creation), nullable `clientContactEmail` + `clientContactPhone` (snapshot of recipient contact at time of creation), nullable `deliveryCode` varchar(6) (generated when driver logs `out_for_delivery`, cleared after `delivered`), FK to organization, nullable user FK (assigned driver), status enum (`created | assigned | picked_up | in_transit | out_for_delivery | delivered | cancelled`)
@@ -96,6 +99,8 @@ All domain entities use **uuidv7** as primary keys. PostGIS geometry columns (dr
 - `sessionMiddleware` — validates the Better Auth session, attaches `user` and `session` to context
 - `requireActiveOrg` — ensures `session.activeOrganizationId` is set; use on all org-scoped routes
 - `requirePermission(permissions)` — fine-grained RBAC via Better Auth permission API; checks the member's role against defined resource statements
+- `requireVerifiedOrg` — loads the active org and rejects (403) unless its `verificationStatus === "verified"`; applied to `POST /api/shipments` so unverified orgs cannot create shipments
+- `requireAdmin` — platform-level gate; requires `user.role === "admin"` (from the Better Auth `admin()` plugin). Used for org verification review. Distinct from org RBAC: org roles (`owner`/`seller`/`driver`) are scoped to a single org, whereas admin is platform-wide. No user is an admin by default — promote via `UPDATE "user" SET role = 'admin'`
 
 `session.activeOrganizationId` is auto-populated on session creation via `databaseHooks` in `session.hooks.ts` — it looks up the user's earliest membership and sets the org automatically, so callers never start with a null active org unless they have no membership.
 

@@ -1,6 +1,9 @@
 import { createMiddleware } from "hono/factory";
 import { HTTPException } from "hono/http-exception";
+import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
+import { db } from "@/core/db";
+import { organization } from "@/db/schema";
 
 export type AppEnv = {
   Variables: {
@@ -33,3 +36,28 @@ export const requirePermission = (permissions: Record<string, string[] | undefin
     if (!result.success) throw new HTTPException(403, { message: "Forbidden" });
     await next();
   });
+
+export const requireVerifiedOrg = createMiddleware<AppEnv>(async (c, next) => {
+  const orgId = c.get("session").activeOrganizationId;
+  if (!orgId) throw new HTTPException(403, { message: "No active organization" });
+
+  const [org] = await db
+    .select({ verificationStatus: organization.verificationStatus })
+    .from(organization)
+    .where(eq(organization.id, orgId))
+    .limit(1);
+
+  if (org?.verificationStatus !== "verified") {
+    throw new HTTPException(403, {
+      message: "Organization must be verified to perform this action",
+    });
+  }
+  await next();
+});
+
+export const requireAdmin = createMiddleware<AppEnv>(async (c, next) => {
+  if (c.get("user").role !== "admin") {
+    throw new HTTPException(403, { message: "Admin access required" });
+  }
+  await next();
+});
