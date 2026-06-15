@@ -25,6 +25,14 @@ export const auth = betterAuth({
     },
     autoSignInAfterVerification: true,
   },
+  session: {
+    // Serve session+user from a signed cookie to skip the per-request DB
+    // lookup. Snapshot is at most `maxAge` stale (role/ban/revocation lag).
+    cookieCache: {
+      enabled: true,
+      maxAge: 5 * 60,
+    },
+  },
   databaseHooks,
 
   plugins: [organizationPlugin, admin(), openAPI()],
