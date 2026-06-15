@@ -91,6 +91,7 @@ All domain entities use **uuidv7** as primary keys. PostGIS geometry columns (dr
 - Event→status mapping: `departed`→`picked_up`, `arrived`→`in_transit`, `out_for_delivery`→`out_for_delivery`, `delivered`→`delivered`. Other events are checkpoints only.
 - Live driver tracking is done via `driverLocations` (updated in real-time), not via events.
 - Events are immutable — no update or delete endpoints.
+- Org verification (KYB): the owner submits/resubmits business data via `POST /api/verification` — this upserts the `organizationVerification` record and resets both it and the org's `verificationStatus` to `pending` in a transaction. A platform admin reviews via `PATCH /api/verification/:organizationId/review` (decision `verified | rejected`; `rejectionReason` required when rejecting), which only acts on a `pending` record and updates the record's `status` and the org's `verificationStatus` together in one transaction. Existing orgs default to `pending`, so deploying the `requireVerifiedOrg` gate blocks current sellers until verified — grandfather them with a one-off `UPDATE organization SET verification_status = 'verified'` if needed.
 
 ---
 

@@ -25,7 +25,7 @@
 3. **Service** — `src/features/<feature>/<feature>.service.ts`; functions throw `HTTPException` on failure, always scope queries by `orgId`
 4. **Types** — `src/features/<feature>/<feature>.types.ts`; derive from Drizzle's `$inferInsert` / `$inferSelect` where possible; all domain types (including enum aliases like `EventStatus`, `ShipmentStatus`) must live here — never redefine them inline in service files or other modules, always import from the owning feature's types file
 5. **Validation** — `src/features/<feature>/<feature>.validation.ts`; Zod schemas for request body/params/query
-6. **Route** — `src/features/<feature>/<feature>.route.ts`; apply `sessionMiddleware` → `requireActiveOrg` → `requirePermission(...)` in that order
+6. **Route** — `src/features/<feature>/<feature>.route.ts`; apply `sessionMiddleware` → `requireActiveOrg` → `requirePermission(...)` in that order. For an org-state gate (e.g. require a verified org), add `requireVerifiedOrg` before `requirePermission` on the specific routes that need it. For platform-admin-only routes (not org-scoped), apply `sessionMiddleware` → `requireAdmin` and skip `requireActiveOrg`/`requirePermission`. A single router can mix both (see `verification.route.ts`).
 7. **Register** — import and mount in `src/core/app.ts` via `app.route("/api/<feature>", <feature>Routes)`
 
 ### Adding a new AI tool
