@@ -4,6 +4,7 @@
 
 - **Feature structure:** `*.route.ts` / `*.service.ts` / `*.types.ts` / `*.validation.ts` / `*.util.ts`
 - **Imports:** Use the `@/` path alias (e.g. `@/core/db`, `@/features/shipments/shipments.service`)
+- **Naming — full words for data/object args:** when a function/callback parameter represents a data object or entity, name it with the full word, not an abbreviation — `data` not `d`, `error` not `e`, `request` not `req`. Applies to arrow-function callbacks too (e.g. `(data) => sendEmail(data.email)`). This does **not** apply to numeric indices — `i`, `idx`, `j` are fine for loop counters
 - **Errors:** Use `HTTPException` for all error responses (consistent status + message)
 - **Validation:** All request inputs (body, query, params) validated with Zod + `@hono/standard-validator`
 - **DB transactions:** Use `db.transaction()` for multi-table atomic writes
