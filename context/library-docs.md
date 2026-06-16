@@ -376,13 +376,16 @@ await addNotification({
 ### Adding a new job type
 
 1. Add a new variant to the `NotificationJobData` union in `src/lib/queue/jobs.ts`
-2. Add a handler branch in the worker in `src/lib/queue/worker.ts`
+2. Add an entry for it to the `handlers` map in `src/lib/queue/worker.ts`
+
+The worker dispatches via a `handlers` lookup table typed as `{ [T in NotificationJobData["type"]]: ... }`, so a new job variant **fails to compile** until its handler is added — you cannot forget step 2. Each handler receives only its own narrowed payload.
 
 ### Rules
 
 - Always enqueue after the DB transaction commits — never inside `db.transaction()`
 - The worker runs in the same process as the server (started in `src/index.ts`)
-- Failed jobs are logged via the `worker.on("failed")` handler — BullMQ retries automatically
+- Retry/cleanup policy is set on every job in `addNotification` (`src/lib/queue/client.ts`): `attempts: 3` with exponential backoff (1s base), plus `removeOnComplete: 100` / `removeOnFail: 1000` so Redis doesn't grow unbounded
+- `worker.on("failed")` fires on **every** failed attempt, not just the last; it checks `attemptsMade` against `opts.attempts` to log "will retry" vs "permanently failed"
 
 ---
 

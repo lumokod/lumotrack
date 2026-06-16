@@ -7,28 +7,37 @@ import { sendReviewRequestEmail } from "@/lib/mail/reviews";
 import { sendShipmentUpdateSms } from "@/lib/sms/shipments";
 import { sendReviewRequestSms } from "@/lib/sms/reviews";
 
+type Handler = (data: NotificationJobData) => Promise<unknown>;
+
+type NotificationHandlers = {
+  [T in NotificationJobData["type"]]: (data: Extract<NotificationJobData, { type: T }>) => Promise<unknown>;
+};
+
+const handlers: NotificationHandlers = {
+  "shipment-update": (data) => sendShipmentUpdateEmail(data.email, data.shipmentContent, data.eventStatus),
+  verification: (data) => sendVerificationEmail(data.email, data.url),
+  "sms-shipment-update": (data) =>
+    sendShipmentUpdateSms(data.phone, data.shipmentContent, data.eventStatus, data.deliveryCode),
+  "review-request": (data) => sendReviewRequestEmail(data.email, data.shipmentContent, data.reviewUrl),
+  "sms-review-request": (data) => sendReviewRequestSms(data.phone, data.shipmentContent, data.reviewUrl),
+};
+
 export function startNotificationWorker() {
   const worker = new Worker<NotificationJobData>(
     "notifications",
     async (job) => {
-      const data = job.data;
-      if (data.type === "shipment-update") {
-        await sendShipmentUpdateEmail(data.email, data.shipmentContent, data.eventStatus);
-      } else if (data.type === "verification") {
-        await sendVerificationEmail(data.email, data.url);
-      } else if (data.type === "sms-shipment-update") {
-        await sendShipmentUpdateSms(data.phone, data.shipmentContent, data.eventStatus, data.deliveryCode);
-      } else if (data.type === "review-request") {
-        await sendReviewRequestEmail(data.email, data.shipmentContent, data.reviewUrl);
-      } else if (data.type === "sms-review-request") {
-        await sendReviewRequestSms(data.phone, data.shipmentContent, data.reviewUrl);
-      }
+     const handler = handlers[job.data.type] as Handler;
+     await handler(job.data);
     },
     { connection },
   );
 
   worker.on("failed", (job, err) => {
-    console.error(`Notification job ${job?.id} failed:`, err.message);
+    const final = job && job.attemptsMade >= (job.opts.attempts ?? 1);
+    console.error(
+      `Notification job ${job?.id} ${final ? "permanently failed" : "failed, will retry"}:`,
+      err.message,
+    );
   });
 
   return worker;
