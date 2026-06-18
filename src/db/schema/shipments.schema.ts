@@ -15,6 +15,7 @@ import { user, organization } from "./auth.schema";
 import { events } from "./events.schema";
 import { addresses } from "./addresses.schema";
 import { shipmentTags } from "./tags.schema";
+import { orders } from "./orders.schema";
 
 export const shipmentStatusEnum = pgEnum("shipment_status", [
   "created",
@@ -83,4 +84,5 @@ export const shipmentsRelations = relations(shipments, ({ one, many }) => ({
     references: [addresses.id],
   }),
   shipmentTags: many(shipmentTags),
+  orders: many(orders),
 }));

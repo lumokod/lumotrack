@@ -6,3 +6,5 @@ export * from "./addresses.schema";
 export * from "./organization-verification.schema";
 export * from "./reviews.schema";
 export * from "./tags.schema";
+export * from "./products.schema";
+export * from "./orders.schema";

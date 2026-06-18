@@ -13,6 +13,8 @@ const statements = {
   event: ["create", "read", "update"],
   location: ["create", "delete"],
   tag: ["create", "read", "update", "delete"],
+  product: ["create", "read", "update", "delete"],
+  order: ["create", "read", "update", "delete"],
 } as const;
 
 const ac = createAccessControl(statements);
@@ -21,6 +23,8 @@ const owner = ac.newRole({
   shipment: ["create", "read", "update"],
   event: ["create", "read", "update"],
   tag: ["create", "read", "update", "delete"],
+  product: ["create", "read", "update", "delete"],
+  order: ["create", "read", "update", "delete"],
   ...ownerAc.statements,
   organization: ["update", "delete", "read"],
 });
@@ -29,6 +33,8 @@ const seller = ac.newRole({
   shipment: ["create", "read", "update"],
   event: ["read"],
   tag: ["create", "read", "update", "delete"],
+  product: ["create", "read", "update", "delete"],
+  order: ["create", "read", "update", "delete"],
   organization: ["read"],
 });
 
@@ -37,6 +43,8 @@ const driver = ac.newRole({
   event: ["create"],
   location: ["create", "delete"],
   tag: ["read"],
+  product: ["read"],
+  order: ["read"],
 });
 
 export const roles = {
