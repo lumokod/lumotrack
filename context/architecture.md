@@ -15,6 +15,7 @@ src/
     events/
     verification/ # org KYB submission + admin review (no .types.ts — types live in .validation.ts)
     reviews/      # customer delivery reviews via signed link (review-link.ts = HMAC sign/verify; types in .validation.ts)
+    tags/         # org-scoped shipment tags (CRUD + default-tag seeding); shipment attach/detach lives in shipments.route.ts
     ai/
       tools/      # AI tool definitions (shipments.tools.ts, events.tools.ts)
       validations/ # AI response schemas (chatResponseSchema)
@@ -23,7 +24,7 @@ src/
       index.ts    # Better Auth configuration
       hooks/
         database.hooks.ts      # databaseHooks (exported) — composes per-model slices; session slice auto-sets activeOrganizationId on create
-        organization.hooks.ts  # beforeAddMember (one-org-per-user enforcement), afterAddMember, beforeCreateInvitation, beforeCreateOrganization
+        organization.hooks.ts  # beforeAddMember (one-org-per-user enforcement), afterAddMember, beforeCreateInvitation, beforeCreateOrganization, afterCreateOrganization (seeds default tags for the new org)
       plugins/
         organization.plugin.ts  # Custom org plugin — roles, RBAC statements
     mail/
@@ -64,11 +65,13 @@ All routes are prefixed `/api`. Protected routes require a valid session (via `s
 | `/api/drivers/me/locations`   | session + org                   | POST (add location), DELETE /:locationId (remove)                                                       |
 | `/api/drivers/me/shipments`   | session + org                   | GET (paginated list), GET /:id                                                                          |
 | `/api/drivers/me/availability`| session + org                   | PATCH — driver toggles isAvailable on their profile                                                     |
-| `/api/shipments`              | session + org                   | GET (paginated), GET /status/:status, GET /:id, POST, PATCH /:id, PATCH /:id/cancel, PATCH /:id/assign |
+| `/api/shipments`              | session + org                   | GET (paginated), GET /status/:status, GET /tags?tagIds=a,b (filter by tags, OR match), GET /:id (includes `tags[]`), POST, PATCH /:id, PATCH /:id/cancel, PATCH /:id/assign |
+| `/api/shipments/:id/tags`     | session + org                   | GET (`tag:read` — shipment's tags), PUT (`tag:update` — replace the shipment's tag set, idempotent)      |
 | `/api/shipments/:id/events`   | session + org                   | POST (log checkpoint → updates shipment status + enqueues notifications), GET (event history)            |
 | `/api/addresses`              | session + org                   | GET (list org addresses), POST (create), DELETE /:id                                                    |
 | `/api/verification`           | session (+ org / admin per route) | GET (own org KYB, `organization:read`), POST (submit/resubmit, `organization:update`); GET /pending and PATCH /:organizationId/review require platform admin |
 | `/api/reviews`                | mixed                           | POST (public — customer submits via signed link, HMAC-authorized, no session), GET (session + org + `shipment:read` — list org's reviews) |
+| `/api/tags`                   | session + org                   | GET (`tag:read` — list), POST (`tag:create`), PATCH /:id (`tag:update`), DELETE /:id (`tag:delete`)      |
 | `/api/ai`                     | session + org + shipment:create | POST /chat — AI shipment assistant                                                                      |
 
 ---
@@ -79,11 +82,14 @@ All routes are prefixed `/api`. Protected routes require a valid session (via `s
 - **organization verification** (`organization-verification.schema.ts`) — `organizationVerification`, the full KYB record, one-to-one with organization (unique `organizationId` FK, cascade delete). Holds submitted business data (`legalName`, `registrationNumber`, `taxId`, contact fields, `documents` jsonb) plus the review workflow (`status` via `verificationStatusEnum`, `rejectionReason`, `reviewedBy` user FK, `reviewedAt`); indexed on `status`. Kept separate from the auth `organization` table so Better Auth never touches it; the org's `verificationStatus` column mirrors this record's `status` and is kept in sync within a transaction
 - **drivers** (`drivers.schema.ts`) — `driverLocations` (PostGIS POINT geometry, SRID 4326); GiST spatial index; `driverProfiles` (isAvailable boolean, unique per userId+organizationId, auto-created via `afterAddMember` hook when role is `driver`)
 - **addresses** (`addresses.schema.ts`) — addresses; `street`, `city`, `country` are required; `state` and `zipCode` are nullable; FK to organization with cascade delete
-- **shipments** (`shipments.schema.ts`) — `shipments` with PostGIS `destination` (coords for live tracking + reverse geocoding on frontend), nullable `originAddressId` FK to addresses (assigned after creation), nullable `clientContactEmail` + `clientContactPhone` (snapshot of recipient contact at time of creation), nullable `deliveryCode` varchar(6) (generated when driver logs `out_for_delivery`, cleared after `delivered`), FK to organization, nullable user FK (assigned driver), status enum (`created | assigned | picked_up | in_transit | out_for_delivery | delivered | cancelled`)
+- **shipments** (`shipments.schema.ts`) — `shipments` with PostGIS `destination` (coords for live tracking + reverse geocoding on frontend), nullable `originAddressId` FK to addresses (assigned after creation), nullable `clientContactEmail` + `clientContactPhone` (snapshot of recipient contact at time of creation), nullable `deliveryCode` varchar(6) (generated when driver logs `out_for_delivery`, cleared after `delivered`), FK to organization, nullable user FK (assigned driver), status enum (`created | assigned | picked_up | in_transit | out_for_delivery | delivered | cancelled`). Many-to-many with `tags` (via `shipment_tags`) and with `products` (via `orders`)
+- **tags** (`tags.schema.ts`) — `tags`, org-scoped shipment labels with `name` (varchar 50, normalized lowercase) and optional `description` (varchar 255); `unique(organizationId, name)` so names are unique per org (effectively case-insensitive via the normalization). `shipment_tags` is the many-to-many junction (composite PK `(shipmentId, tagId)`, both cascade). New orgs are seeded a default tag catalog via the `afterCreateOrganization` hook (`seedDefaultTags` in `tags.service.ts`, idempotent via `onConflictDoNothing`)
+- **products** (`products.schema.ts`) — org-scoped catalog: `name` (varchar 100), optional `sku` (varchar 50) with `unique(organizationId, sku)`, optional `description` (varchar 500), `weight` (real, per-unit), FK to organization (cascade)
+- **orders** (`orders.schema.ts`) — the many-to-many junction between `shipments` and `products` (one row = N units of a product in a shipment). Composite PK `(shipmentId, productId)`; `shipmentId` cascades on shipment delete, `productId` is **restrict** so a product that appears in a shipment cannot be hard-deleted (protects shipment contents); `quantity` integer (≥1, enforced in validation). Note: despite the name, this is a line-item junction, not a customer-purchase entity
 - **reviews** (`reviews.schema.ts`) — customer delivery review, one-to-one with shipment (unique `shipmentId` FK, cascade delete). `organizationId` and `driverUserId` are denormalized from the shipment (so per-org/per-driver rating aggregates need no join; `driverUserId` is `set null`). `rating` is `smallint` (1–5, enforced in Zod, not the DB), `comment` is optional varchar(1000). Indexed on `organizationId` and `driverUserId`
 - **events** (`events.schema.ts`) — shipment checkpoint log; each row has `status` (own `eventStatusEnum`: `departed | arrived | delivery_attempted | held_at_facility | customs_cleared | out_for_delivery | delivered | returned`), `address` (plain text, no geometry), optional `description`, FK to shipments with cascade delete
 
-All domain entities use **uuidv7** as primary keys. PostGIS geometry columns (drivers, shipments) have GiST spatial indexes. Events use plain text address — no geometry needed since they are a history log, not a tracking source.
+All domain entities use **uuidv7** as primary keys. Junction tables (`shipment_tags`, `orders`) are the exception — they use composite primary keys over their two FKs, no surrogate id. PostGIS geometry columns (drivers, shipments) have GiST spatial indexes. Events use plain text address — no geometry needed since they are a history log, not a tracking source.
 
 ### Design notes
 
@@ -98,6 +104,8 @@ All domain entities use **uuidv7** as primary keys. PostGIS geometry columns (dr
 - Live driver tracking is done via `driverLocations` (updated in real-time), not via events.
 - Events are immutable — no update or delete endpoints.
 - Reviews: when a shipment is logged `delivered`, `enqueueNotifications` also enqueues a review request (email if `clientContactEmail`, SMS if `clientContactPhone`) containing a signed review link. The customer is not a logged-in user, so the link is authorized by an **HMAC token** over the `shipmentId` (`review-link.ts`, signed with `BETTER_AUTH_SECRET`) rather than a session — stateless, no token is persisted. The public `POST /api/reviews` verifies the token, requires the shipment to be `delivered`, and the `unique(shipmentId)` constraint enforces a single review per shipment. Link base is `BETTER_AUTH_URL`.
+- Tags: org-scoped labels attached to shipments many-to-many. Names are normalized to lowercase (Zod `.trim().toLowerCase()`) so the `unique(organizationId, name)` constraint is effectively case-insensitive; duplicate-name inserts surface as `409`. `PUT /api/shipments/:id/tags` uses **set semantics** — the body's `tagIds` replaces the shipment's whole tag set (send `[]` to clear). Filtering via `GET /api/shipments/tags?tagIds=a,b` is **OR** match, implemented as a subquery on `shipments.id` (not a join) to keep one row per shipment and preserve cursor pagination. New orgs get a seeded starter catalog (`express`, `fragile`, `temperature_controlled`, `gift`, `documents`, `return`).
+- Products & orders: `products` is the org's catalog; `orders` is the many-to-many junction carrying `quantity` between a shipment and its products. `products` and `orders` currently have **schema + RBAC only** — no feature module (service/route) yet. Deleting a product referenced by any `orders` row is blocked by the `restrict` FK (surface as `409` when the service is built). Editing a product reflects in existing shipment contents (line items read the live product, not a snapshot).
 - Org verification (KYB): the owner submits/resubmits business data via `POST /api/verification` — this upserts the `organizationVerification` record and resets both it and the org's `verificationStatus` to `pending` in a transaction. A platform admin reviews via `PATCH /api/verification/:organizationId/review` (decision `verified | rejected`; `rejectionReason` required when rejecting), which only acts on a `pending` record and updates the record's `status` and the org's `verificationStatus` together in one transaction. Existing orgs default to `pending`, so deploying the `requireVerifiedOrg` gate blocks current sellers until verified — grandfather them with a one-off `UPDATE organization SET verification_status = 'verified'` if needed.
 
 ---
@@ -118,11 +126,11 @@ A user belongs to **at most one organization**. Org creation is capped at 1 per 
 
 | Role     | Permissions                                                                                              |
 | -------- | -------------------------------------------------------------------------------------------------------- |
-| `owner`  | shipment: create, read, update; event: create, read, update; organization: update, delete, read; + org owner statements |
-| `seller` | shipment: create, read, update; event: read; organization: read                                          |
-| `driver` | shipment: read, update; event: create; location: create, delete                                          |
+| `owner`  | shipment: create, read, update; event: create, read, update; tag/product/order: create, read, update, delete; organization: update, delete, read; + org owner statements |
+| `seller` | shipment: create, read, update; event: read; tag/product/order: create, read, update, delete; organization: read |
+| `driver` | shipment: read, update; event: create; location: create, delete; tag/product/order: read                |
 
-Resources: `shipment` (create/read/update), `event` (create/read/update), `location` (create/delete), `organization` (read/update/delete). Default invitation role is `driver`. A user belongs to at most one org: creation is capped at 1 (`organizationLimit: 1`) and `beforeAddMember` rejects joining a second org (see Authorization Model).
+Resources: `shipment` (create/read/update), `event` (create/read/update), `location` (create/delete), `tag` (create/read/update/delete), `product` (create/read/update/delete), `order` (create/read/update/delete), `organization` (read/update/delete). Default invitation role is `driver`. A user belongs to at most one org: creation is capped at 1 (`organizationLimit: 1`) and `beforeAddMember` rejects joining a second org (see Authorization Model).
 
 ---
 
