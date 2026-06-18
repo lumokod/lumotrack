@@ -3,6 +3,7 @@ import {
   getAllShipments,
   getShipmentWithTimeline,
   getShipmentsByStatus,
+  getShipmentsByTags,
   createShipment,
   updateShipment,
   assignDriver,
@@ -14,6 +15,7 @@ import {
   shipmentStatusSchema,
   paginationSchema,
   assignDriverSchema,
+  shipmentsByTagsQuerySchema,
 } from "./shipments.validation";
 import type { ShipmentStatus } from "./shipments.types";
 import {
@@ -59,6 +61,18 @@ shipmentsRoutes.get(
       organizationId,
       cursor,
     );
+    return c.json(result);
+  },
+);
+
+shipmentsRoutes.get(
+  "/tags",
+  requirePermission({ shipment: ["read"] }),
+  sValidator("query", shipmentsByTagsQuerySchema),
+  async (c) => {
+    const { tagIds, cursor } = c.req.valid("query");
+    const organizationId = c.get("session").activeOrganizationId!;
+    const result = await getShipmentsByTags(tagIds, organizationId, cursor);
     return c.json(result);
   },
 );

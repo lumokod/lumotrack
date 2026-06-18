@@ -32,6 +32,20 @@ export const paginationSchema = z.object({
   cursor: z.uuidv7().optional(),
 });
 
+export const shipmentsByTagsQuerySchema = z.object({
+  // Comma-separated tag ids, e.g. ?tagIds=<uuid>,<uuid>
+  tagIds: z
+    .string()
+    .transform((value) =>
+      value
+        .split(",")
+        .map((id) => id.trim())
+        .filter(Boolean),
+    )
+    .pipe(z.array(z.uuidv7()).min(1).max(50)),
+  cursor: z.uuidv7().optional(),
+});
+
 export const assignDriverSchema = z.object({
   driverId: z.string().min(1),
 });

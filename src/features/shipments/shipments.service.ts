@@ -1,6 +1,13 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { db } from "@/core/db";
-import { shipments, member, events, driverProfiles } from "@/db/schema";
+import {
+  shipments,
+  member,
+  events,
+  driverProfiles,
+  tags,
+  shipmentTags,
+} from "@/db/schema";
 import type {
   ShipmentStatus,
   CreateShipmentInput,
@@ -34,6 +41,43 @@ export async function getShipmentsByStatus(
 ) {
   return paginateShipments(
     [eq(shipments.organizationId, orgId), eq(shipments.status, status)],
+    cursor,
+  );
+}
+
+export async function getShipmentsByTags(
+  tagIds: string[],
+  orgId: string,
+  cursor?: string,
+) {
+  const uniqueTagIds = [...new Set(tagIds)];
+
+  // Every tag must belong to this org — no filtering by another org's tag.
+  const ownedTags = await db
+    .select({ id: tags.id })
+    .from(tags)
+    .where(and(inArray(tags.id, uniqueTagIds), eq(tags.organizationId, orgId)));
+
+  if (ownedTags.length !== uniqueTagIds.length) {
+    throw new HTTPException(404, {
+      message: "One or more tags do not exist in this organization",
+    });
+  }
+
+  // ANY/OR semantics: a shipment matches if it carries at least one of the
+  // tags. Subquery (not a join) keeps one row per shipment even when several
+  // tags match, and preserves the id-based cursor pagination.
+  return paginateShipments(
+    [
+      eq(shipments.organizationId, orgId),
+      inArray(
+        shipments.id,
+        db
+          .select({ id: shipmentTags.shipmentId })
+          .from(shipmentTags)
+          .where(inArray(shipmentTags.tagId, uniqueTagIds)),
+      ),
+    ],
     cursor,
   );
 }
