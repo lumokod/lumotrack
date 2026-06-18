@@ -46,6 +46,37 @@ export async function getOrgTags(orgId: string) {
   return db.select().from(tags).where(eq(tags.organizationId, orgId));
 }
 
+// Starter tags copied into every new org's catalog. Owners/sellers can rename,
+// delete, or add to these freely — they are plain editable rows, not an enum.
+// Intentionally omitted: "standard" (= untagged), "heavy" (derivable from
+// shipments.weight), "domestic"/"international" (derivable from addresses).
+export const DEFAULT_TAGS: CreateTagInput[] = [
+  { name: "express", description: "Expedited delivery with priority handling" },
+  { name: "fragile", description: "Handle with care — breakable contents" },
+  {
+    name: "temperature_controlled",
+    description: "Requires temperature-controlled transport",
+  },
+  { name: "gift", description: "Gift shipment — handle presentation with care" },
+  { name: "documents", description: "Contains documents or paperwork only" },
+  { name: "return", description: "Return shipment headed back to the sender" },
+];
+
+// Seeds the default catalog for a new org. Idempotent: the unique(orgId, name)
+// constraint + onConflictDoNothing make re-running a no-op.
+export async function seedDefaultTags(orgId: string) {
+  await db
+    .insert(tags)
+    .values(
+      DEFAULT_TAGS.map((tag) => ({
+        id: uuidv7(),
+        ...tag,
+        organizationId: orgId,
+      })),
+    )
+    .onConflictDoNothing();
+}
+
 export async function createTag(data: CreateTagInput, orgId: string) {
   try {
     const [tag] = await db

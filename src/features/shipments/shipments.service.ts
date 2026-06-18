@@ -47,17 +47,21 @@ export async function getShipmentWithTimeline(
       eq(shipments.id, shipmentId),
       eq(shipments.organizationId, orgId),
     ),
-    with: { events: { orderBy: asc(events.createdAt) } },
+    with: {
+      events: { orderBy: asc(events.createdAt) },
+      shipmentTags: { with: { tag: true } },
+    },
   });
 
   if (!shipment) {
     throw new HTTPException(404, { message: "Shipment not found" });
   }
 
-  const { destination, ...rest } = shipment;
+  const { destination, shipmentTags, ...rest } = shipment;
   return {
     ...rest,
     destination: { longitude: destination.x, latitude: destination.y },
+    tags: shipmentTags.map((row) => row.tag),
   };
 }
 

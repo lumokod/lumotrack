@@ -3,6 +3,7 @@ import { APIError } from "better-auth/api";
 import { eq } from "drizzle-orm";
 import { db } from "@/core/db";
 import { driverProfiles, member } from "@/db/schema";
+import { seedDefaultTags } from "@/features/tags/tags.service";
 
 type OrgHooks = NonNullable<OrganizationOptions["organizationHooks"]>;
 
@@ -37,4 +38,8 @@ export const organizationHooks: OrgHooks = {
   beforeCreateOrganization: async ({ organization: org }) => ({
     data: { ...org, slug: org.slug?.toLowerCase() },
   }),
+  afterCreateOrganization: async ({ organization: org }) => {
+    // Give every new org a starter tag catalog they can edit freely.
+    await seedDefaultTags(org.id);
+  },
 };
