@@ -7,6 +7,7 @@ import { eventsRoutes } from "../features/events/events.route";
 import { addressesRoutes } from "../features/addresses/addresses.route";
 import { verificationRoutes } from "../features/verification/verification.route";
 import { reviewsRoutes } from "../features/reviews/reviews.route";
+import { tagsRoutes } from "../features/tags/tags.route";
 import { HTTPException } from "hono/http-exception";
 
 const app = new Hono();
@@ -18,6 +19,7 @@ app.route("/api/shipments", eventsRoutes);
 app.route("/api/addresses", addressesRoutes);
 app.route("/api/verification", verificationRoutes);
 app.route("/api/reviews", reviewsRoutes);
+app.route("/api/tags", tagsRoutes);
 app.route("/api/ai", aiRoutes);
 
 app.get("/", (c) => c.text("Hello Hono!"));

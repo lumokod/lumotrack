@@ -11,6 +11,7 @@ Read these before working on any part of the project:
 - [`context/architecture.md`](context/architecture.md) — API routes, database schema, authorization model, AI feature
 - [`context/code-standards.md`](context/code-standards.md) — conventions, how to extend the project, migrations
 - [`context/library-docs.md`](context/library-docs.md) — Hono, Better Auth, Drizzle ORM, Vercel AI SDK usage patterns
+- [`context/memory.md`](context/memory.md) — persistent notes on user preferences and project decisions
 
 ## Tech Stack
 

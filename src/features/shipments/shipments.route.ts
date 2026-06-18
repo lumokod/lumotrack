@@ -25,6 +25,8 @@ import {
 } from "@/shared/middleware/auth.middleware";
 import { sValidator } from "@hono/standard-validator";
 import { idParamSchema } from "@/shared/validations/common";
+import { getShipmentTags, setShipmentTags } from "@/features/tags/tags.service";
+import { setShipmentTagsSchema } from "@/features/tags/tags.validation";
 
 export const shipmentsRoutes = new Hono<AppEnv>();
 
@@ -109,6 +111,32 @@ shipmentsRoutes.patch(
     const organizationId = c.get("session").activeOrganizationId!;
     const shipment = await cancelShipment(id, organizationId);
     return c.json(shipment);
+  },
+);
+
+shipmentsRoutes.get(
+  "/:id/tags",
+  requirePermission({ tag: ["read"] }),
+  sValidator("param", idParamSchema),
+  async (c) => {
+    const { id } = c.req.valid("param");
+    const organizationId = c.get("session").activeOrganizationId!;
+    const tags = await getShipmentTags(id, organizationId);
+    return c.json(tags);
+  },
+);
+
+shipmentsRoutes.put(
+  "/:id/tags",
+  requirePermission({ tag: ["update"] }),
+  sValidator("param", idParamSchema),
+  sValidator("json", setShipmentTagsSchema),
+  async (c) => {
+    const { id } = c.req.valid("param");
+    const { tagIds } = c.req.valid("json");
+    const organizationId = c.get("session").activeOrganizationId!;
+    const tags = await setShipmentTags(id, tagIds, organizationId);
+    return c.json(tags);
   },
 );
 
