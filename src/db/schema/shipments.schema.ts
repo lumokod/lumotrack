@@ -14,6 +14,7 @@ import { relations } from "drizzle-orm";
 import { user, organization } from "./auth.schema";
 import { events } from "./events.schema";
 import { addresses } from "./addresses.schema";
+import { shipmentTags } from "./tags.schema";
 
 export const shipmentStatusEnum = pgEnum("shipment_status", [
   "created",
@@ -81,4 +82,5 @@ export const shipmentsRelations = relations(shipments, ({ one, many }) => ({
     fields: [shipments.originAddressId],
     references: [addresses.id],
   }),
+  shipmentTags: many(shipmentTags),
 }));
