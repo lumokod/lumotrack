@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+import { cors } from "hono/cors";
+import { env } from "./env";
 import { authRoutes } from "../features/auth/auth.route";
 import { driversRoutes } from "../features/drivers/drivers.route";
 import { shipmentsRoutes } from "../features/shipments/shipments.route";
@@ -11,6 +13,16 @@ import { tagsRoutes } from "../features/tags/tags.route";
 import { HTTPException } from "hono/http-exception";
 
 const app = new Hono();
+
+app.use(
+  "*",
+  cors({
+    origin: env.CORS_ORIGIN,
+    allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
+  })
+);
 
 app.route("/api/auth", authRoutes);
 app.route("/api/drivers", driversRoutes);

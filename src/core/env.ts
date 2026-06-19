@@ -4,6 +4,10 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
   ANTHROPIC_API_KEY: z.string().min(1),
   ENVIRONMENT: z.enum(["development", "production", "test"]),
+  CORS_ORIGIN: z
+    .string()
+    .min(1)
+    .transform((value) => value.split(",").map((origin) => origin.trim())),
   REDIS_URL: z.string().min(1),
   BETTER_AUTH_SECRET: z.string().min(1),
   BETTER_AUTH_URL: z.url(),

@@ -48,6 +48,7 @@ Validated at startup via Zod in `src/core/env.ts`. Missing vars cause `process.e
 DATABASE_URL          # PostgreSQL connection string
 ANTHROPIC_API_KEY     # Claude API key
 ENVIRONMENT           # development | production | test
+CORS_ORIGIN           # Allowed CORS origin(s), comma-separated (e.g. http://localhost:3000)
 REDIS_URL             # Redis connection string
 BETTER_AUTH_SECRET    # Auth encryption key
 BETTER_AUTH_URL       # Auth base URL (e.g. http://localhost:3000)
