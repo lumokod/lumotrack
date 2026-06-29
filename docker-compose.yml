@@ -3,7 +3,7 @@
 # Postgres is needed here.
 #
 #   pnpm db:up          # start the test Postgres
-#   pnpm test:db:setup  # migrate the lumotrack_test database
+#   pnpm test:migrate  # migrate the lumotrack_test database
 #   pnpm db:down        # stop it (schema kept in the named volume)
 
 services:

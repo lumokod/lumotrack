@@ -1,13 +1,13 @@
 {
   "name": "lumotrack",
   "scripts": {
-    "dev": "bun run --hot src/index.ts",
+    "dev": "bun run --hot app/index.ts",
     "generate": "npx drizzle-kit generate --config ./drizzle.config.ts",
     "migrate": "npx drizzle-kit migrate --config ./drizzle.config.ts",
-    "start": "bun run src/index.ts",
+    "start": "bun run app/index.ts",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
-    "test:db:setup": "bash scripts/setup-test-db.sh",
+    "test:migrate": "bash scripts/migrate-test-db.sh",
     "test": "bun test",
     "test:watch": "bun test --watch"
   },

@@ -3,6 +3,4 @@ node_modules/
 .agents
 .env
 .env.*
-!.env.example
-!.env.test.example
 .claude

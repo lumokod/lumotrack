@@ -72,7 +72,7 @@ throw new HTTPException(403, { message: "Forbidden" });
 
 ### Registering routes
 
-Mount in `src/core/app.ts`:
+Mount in `app/core/app.ts`:
 
 ```ts
 app.route("/api/myfeature", myFeatureRoutes);
@@ -93,7 +93,7 @@ requirePermission({ shipment: ["read"] })          // one resource
 requirePermission({ shipment: ["create", "read"] }) // multiple actions
 ```
 
-The `permissions` object maps resource names to action arrays. Defined resources and actions are in `src/lib/plugins/organization.plugin.ts`.
+The `permissions` object maps resource names to action arrays. Defined resources and actions are in `app/lib/plugins/organization.plugin.ts`.
 
 ### Calling auth API in middleware
 
@@ -127,7 +127,7 @@ Never manually define user/session types — always use `auth.$Infer`.
 
 ### Session caching
 
-`cookieCache` is enabled in `src/lib/auth/index.ts` — `auth.api.getSession` serves session+user from a signed cookie (no DB hit) for `maxAge` (5 min), then revalidates against the store. Middleware code is unchanged. Trade-off: session changes (role/ban/revoke) lag up to `maxAge`.
+`cookieCache` is enabled in `app/lib/auth/index.ts` — `auth.api.getSession` serves session+user from a signed cookie (no DB hit) for `maxAge` (5 min), then revalidates against the store. Middleware code is unchanged. Trade-off: session changes (role/ban/revoke) lag up to `maxAge`.
 
 ---
 
@@ -293,7 +293,7 @@ export function getTools(orgId: string) {
 
 - Every tool's `execute` must receive `orgId` via closure — never trust tool input for org scoping
 - Tools call service functions directly — no HTTP, no fetch
-- If a tool returns data the frontend renders, add it to `chatResponseSchema` in `src/features/ai/validations/index.ts`
+- If a tool returns data the frontend renders, add it to `chatResponseSchema` in `app/features/ai/validations/index.ts`
 - Keep `stopWhen: stepCountIs(5)` — do not increase without good reason
 - Model is always `claude-sonnet-4-6` — do not change
 
@@ -303,7 +303,7 @@ export function getTools(orgId: string) {
 
 ### Setup
 
-The Resend client and `FROM` constant live in `src/lib/mail/client.ts` and are shared across all email files:
+The Resend client and `FROM` constant live in `app/lib/mail/client.ts` and are shared across all email files:
 
 ```ts
 import { Resend } from "resend";
@@ -316,7 +316,7 @@ export const FROM = "LumoTrack <onboarding@resend.dev>";
 ### Structure
 
 ```
-src/lib/mail/
+app/lib/mail/
   client.ts     # Resend instance + FROM constant
   auth.ts       # sendVerificationEmail
   shipments.ts  # sendShipmentUpdateEmail
@@ -335,7 +335,7 @@ All consumers import from `@/lib/mail` — the index re-exports all helpers. Non
 4. Re-export it from `index.ts`
 
 ```ts
-// src/lib/mail/shipments.ts
+// app/lib/mail/shipments.ts
 import { resend, FROM } from "./client";
 
 export async function sendSomeEmail(to: string, data: SomeData) {
@@ -356,7 +356,7 @@ All emails use the same `FROM` address. Update the domain once a verified sender
 
 ### Setup
 
-Queue and connection live in `src/lib/queue/client.ts`. Worker starts in `src/index.ts` via `startNotificationWorker()`.
+Queue and connection live in `app/lib/queue/client.ts`. Worker starts in `app/index.ts` via `startNotificationWorker()`.
 
 ### Enqueuing a job
 
@@ -375,16 +375,16 @@ await addNotification({
 
 ### Adding a new job type
 
-1. Add a new variant to the `NotificationJobData` union in `src/lib/queue/jobs.ts`
-2. Add an entry for it to the `handlers` map in `src/lib/queue/worker.ts`
+1. Add a new variant to the `NotificationJobData` union in `app/lib/queue/jobs.ts`
+2. Add an entry for it to the `handlers` map in `app/lib/queue/worker.ts`
 
 The worker dispatches via a `handlers` lookup table typed as `{ [T in NotificationJobData["type"]]: ... }`, so a new job variant **fails to compile** until its handler is added — you cannot forget step 2. Each handler receives only its own narrowed payload.
 
 ### Rules
 
 - Always enqueue after the DB transaction commits — never inside `db.transaction()`
-- The worker runs in the same process as the server (started in `src/index.ts`)
-- Retry/cleanup policy is set on every job in `addNotification` (`src/lib/queue/client.ts`): `attempts: 3` with exponential backoff (1s base), plus `removeOnComplete: 100` / `removeOnFail: 1000` so Redis doesn't grow unbounded
+- The worker runs in the same process as the server (started in `app/index.ts`)
+- Retry/cleanup policy is set on every job in `addNotification` (`app/lib/queue/client.ts`): `attempts: 3` with exponential backoff (1s base), plus `removeOnComplete: 100` / `removeOnFail: 1000` so Redis doesn't grow unbounded
 - `worker.on("failed")` fires on **every** failed attempt, not just the last; it checks `attemptsMade` against `opts.attempts` to log "will retry" vs "permanently failed"
 
 ---

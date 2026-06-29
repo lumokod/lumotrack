@@ -3,7 +3,7 @@
 ## Project Structure
 
 ```
-src/
+app/
   core/           # App bootstrap, DB connection, env validation
   db/
     schema/       # Drizzle table definitions
@@ -122,7 +122,7 @@ A user belongs to **at most one organization**. Org creation is capped at 1 per 
 
 `session.activeOrganizationId` is auto-populated on session creation via `databaseHooks` in `database.hooks.ts` — it looks up the user's (single) membership and sets the org automatically, so callers never start with a null active org unless they have no membership.
 
-### Organization roles (defined in `src/lib/auth/plugins/organization.plugin.ts`)
+### Organization roles (defined in `app/lib/auth/plugins/organization.plugin.ts`)
 
 | Role     | Permissions                                                                                              |
 | -------- | -------------------------------------------------------------------------------------------------------- |
@@ -136,9 +136,9 @@ Resources: `shipment` (create/read/update), `event` (create/read/update), `locat
 
 ## AI Feature
 
-Located in `src/features/ai/`. Uses the Vercel AI SDK (`generateText`) with Claude Sonnet 4.6 and tool calling (max 5 steps). Tools are scoped to the authenticated org's context (`orgId` isolation). Tool inputs are validated with Zod schemas.
+Located in `app/features/ai/`. Uses the Vercel AI SDK (`generateText`) with Claude Sonnet 4.6 and tool calling (max 5 steps). Tools are scoped to the authenticated org's context (`orgId` isolation). Tool inputs are validated with Zod schemas.
 
-### Tools (in `src/features/ai/tools/`)
+### Tools (in `app/features/ai/tools/`)
 
 - `get_all_shipments`, `get_shipment_by_id`, `get_shipments_by_status`, `create_shipment`, `update_shipment`, `cancel_shipment` — shipment management (no hard delete)
 - `get_org_drivers` — list org drivers (used for name-to-ID resolution before assignment)

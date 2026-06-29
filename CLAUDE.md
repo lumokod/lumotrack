@@ -39,7 +39,7 @@ pnpm migrate        # Run pending migrations
 
 pnpm db:up          # Start the test Postgres container (docker compose)
 pnpm db:down        # Stop it
-pnpm test:db:setup  # Migrate the lumotrack_test database
+pnpm test:migrate  # Migrate the lumotrack_test database
 pnpm test           # Run tests (bun test)
 pnpm test:watch     # Run tests in watch mode
 ```
@@ -50,7 +50,7 @@ pnpm test:watch     # Run tests in watch mode
 
 ## Environment Variables
 
-Validated at startup via Zod in `src/core/env.ts`. Missing vars cause `process.exit(1)`.
+Validated at startup via Zod in `app/core/env.ts`. Missing vars cause `process.exit(1)`.
 
 ```
 DATABASE_URL          # PostgreSQL connection string
@@ -66,4 +66,4 @@ TWILIO_AUTH_TOKEN     # Twilio auth token
 TWILIO_PHONE_NUMBER   # Twilio sender phone number (E.164 format)
 ```
 
-Local dev uses `.env` (template: `.env.example`). Tests use `.env.test` (template: `.env.test.example`), loaded automatically by `bun test`. Both real env files are gitignored.
+Local dev uses `.env`. Tests use `.env.test` (the same vars; `DATABASE_URL` points at the test DB), loaded automatically by `bun test`. Both are gitignored.
