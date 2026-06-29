@@ -1,0 +1,31 @@
+# Isolated TEST database only. Your app + dev DB + Redis run as they already do
+# on the host — this does not touch them. Tests mock Redis/the queue, so only
+# Postgres is needed here.
+#
+#   pnpm db:up          # start the test Postgres
+#   pnpm test:db:setup  # migrate the lumotrack_test database
+#   pnpm db:down        # stop it (schema kept in the named volume)
+
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      # The postgis image auto-enables PostGIS in POSTGRES_DB, so lumotrack_test
+      # is ready to migrate with no extra "create extension" step.
+      POSTGRES_DB: lumotrack_test
+    ports:
+      # Host 5433 → container 5432, to avoid clashing with your dev Postgres on
+      # the host's 5432.
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:

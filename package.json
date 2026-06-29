@@ -4,7 +4,12 @@
     "dev": "bun run --hot src/index.ts",
     "generate": "npx drizzle-kit generate --config ./drizzle.config.ts",
     "migrate": "npx drizzle-kit migrate --config ./drizzle.config.ts",
-    "start": "bun run src/index.ts"
+    "start": "bun run src/index.ts",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "test:db:setup": "bash scripts/setup-test-db.sh",
+    "test": "bun test",
+    "test:watch": "bun test --watch"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.79",

@@ -1,0 +1,4 @@
+[test]
+# Loaded before any test file. Registers module mocks (auth, queue) and must
+# run first so the app never opens a real Redis connection on import.
+preload = ["./test/setup.ts"]
