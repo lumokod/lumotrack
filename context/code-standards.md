@@ -67,10 +67,31 @@ authRoutes.on(["GET", "POST"], "/*", (c) => auth.handler(c.req.raw));
 
 ## Migrations
 
-Run `pnpm generate` after changing any schema file, then `pnpm migrate` to apply. Migration files live in `src/db/migrations/`. The first migration enables the PostGIS extension.
+Run `pnpm generate` after changing any schema file, then `pnpm migrate` to apply. Migration files live in `src/db/migrations/`.
+
+Migrations do **not** enable the PostGIS extension — it must already exist in the target database, or the `geometry` columns fail to create. The dev DB has it enabled; the test container's `postgis/postgis` image auto-enables it in `lumotrack_test`.
 
 ---
 
 ## Tests
 
-No test suite configured. Manual testing via the running server is the current workflow.
+`bun test` (Bun's built-in, Jest-compatible runner). Test files are `*.test.ts`, colocated with the code they cover (e.g. `shipments.route.test.ts` next to `shipments.route.ts`).
+
+**Test database.** Tests run against a real Postgres + PostGIS instance — services use PostGIS `point` queries, so the DB can't be meaningfully mocked. `docker-compose.yml` provides a disposable, test-only Postgres on host port **5433** with database `lumotrack_test` (PostGIS auto-enabled by the image). It's separate from the dev DB on 5432 and the app never touches it.
+
+**Mocked boundaries** (`test/setup.ts`, loaded via the `bunfig.toml` preload — runs before the app is imported):
+
+- `@/lib/auth` — sessions are injected, not real. Use `loginAs()` / `logout()` / `denyPermission()` from `test/helpers/auth.ts` to set the current user. Don't test Better Auth itself (maintained lib); **do** test that routes enforce `sessionMiddleware` / `requirePermission` / `requireVerifiedOrg`.
+- `@/lib/queue` — BullMQ opens a Redis connection on import, so it's stubbed; tests need no Redis. (Resend/Twilio only construct clients on import, so mock them only when testing flows that actually send.)
+
+**Helpers** (`test/helpers/db.ts`): `resetDb()` truncates all tables; `seedOrg()` / `seedUserMember()` insert fixtures. Call `resetDb()` in `beforeEach` for isolation.
+
+**Writing an endpoint test:** the mocks are already in place — just `loginAs(...)`, seed rows, then `app.request(path, { method, body })` and assert on `res.status` / `await res.json()`. See `src/features/shipments/shipments.route.test.ts`.
+
+**Commands:**
+
+- `pnpm db:up` — start the test Postgres (after a reboot or `pnpm db:down`)
+- `pnpm test:db:setup` — migrate `lumotrack_test` (first time, or after adding a migration)
+- `pnpm test` / `pnpm test:watch` — run the suite
+
+Env comes from `.env.test` (gitignored; template in `.env.test.example`), which `bun test` loads automatically.

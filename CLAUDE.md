@@ -32,11 +32,19 @@ Read these before working on any part of the project:
 ## Scripts
 
 ```bash
-pnpm dev        # Hot-reload dev server (bun --hot)
-pnpm start      # Production start
-pnpm generate   # Generate Drizzle migrations
-pnpm migrate    # Run pending migrations
+pnpm dev            # Hot-reload dev server (bun --hot)
+pnpm start          # Production start
+pnpm generate       # Generate Drizzle migrations
+pnpm migrate        # Run pending migrations
+
+pnpm db:up          # Start the test Postgres container (docker compose)
+pnpm db:down        # Stop it
+pnpm test:db:setup  # Migrate the lumotrack_test database
+pnpm test           # Run tests (bun test)
+pnpm test:watch     # Run tests in watch mode
 ```
+
+> **Testing:** `bun test` against a real Postgres+PostGIS test DB (`lumotrack_test`, host port 5433 via Docker). Auth and the BullMQ queue are mocked. See [`context/code-standards.md`](context/code-standards.md) → Tests.
 
 > **Package manager: pnpm.** Do not use bun or npm to install packages.
 
@@ -57,3 +65,5 @@ TWILIO_ACCOUNT_SID    # Twilio account SID
 TWILIO_AUTH_TOKEN     # Twilio auth token
 TWILIO_PHONE_NUMBER   # Twilio sender phone number (E.164 format)
 ```
+
+Local dev uses `.env` (template: `.env.example`). Tests use `.env.test` (template: `.env.test.example`), loaded automatically by `bun test`. Both real env files are gitignored.

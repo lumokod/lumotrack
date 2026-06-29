@@ -20,3 +20,20 @@ rule is about data/object args, not numbers.
 **How to apply:** Default to descriptive parameter names for data/object args in any
 code written for this user. Also codified in
 [code-standards.md](code-standards.md) Conventions.
+
+## Persist notes in context files, not assistant memory
+
+_Type: feedback_
+
+The user wants persistent project notes, decisions, and preferences recorded in the
+in-repo `context/*.md` files (plus `CLAUDE.md` / `README.md`) — **not** in the
+assistant's private/built-in memory store.
+
+**Why:** The user wants durable knowledge to live in the repository where they can see,
+edit, and version it, rather than in an external memory they don't control.
+
+**How to apply:** When something is worth remembering for future sessions, write it to
+the appropriate context file — `context/memory.md` for non-obvious preferences and
+decisions, `context/code-standards.md` for conventions, `context/architecture.md` for
+structure. Do not create or maintain files in the assistant's memory directory for this
+project.
