@@ -4,16 +4,7 @@ import { uuidv7 } from "uuidv7";
 import { db } from "@/core/db";
 import { tags, shipmentTags, shipments } from "@/db/schema";
 import type { CreateTagInput, UpdateTagInput } from "./tags.types";
-
-// Postgres unique_violation — surfaced when a tag name collides within an org.
-function isUniqueViolation(error: unknown): boolean {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    (error as { code: unknown }).code === "23505"
-  );
-}
+import { isUniqueViolation } from "@/shared/db.util";
 
 async function getTagOrThrow(tagId: string, orgId: string) {
   const [tag] = await db
@@ -46,10 +37,6 @@ export async function getOrgTags(orgId: string) {
   return db.select().from(tags).where(eq(tags.organizationId, orgId));
 }
 
-// Starter tags copied into every new org's catalog. Owners/sellers can rename,
-// delete, or add to these freely — they are plain editable rows, not an enum.
-// Intentionally omitted: "standard" (= untagged), "heavy" (derivable from
-// shipments.weight), "domestic"/"international" (derivable from addresses).
 export const DEFAULT_TAGS: CreateTagInput[] = [
   { name: "express", description: "Expedited delivery with priority handling" },
   { name: "fragile", description: "Handle with care — breakable contents" },
@@ -62,8 +49,7 @@ export const DEFAULT_TAGS: CreateTagInput[] = [
   { name: "return", description: "Return shipment headed back to the sender" },
 ];
 
-// Seeds the default catalog for a new org. Idempotent: the unique(orgId, name)
-// constraint + onConflictDoNothing make re-running a no-op.
+
 export async function seedDefaultTags(orgId: string) {
   await db
     .insert(tags)

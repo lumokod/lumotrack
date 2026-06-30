@@ -35,4 +35,25 @@ describe("tags CRUD", () => {
     const res = await app.request(`/api/tags/${otherTagId}`, { method: "DELETE" });
     expect(res.status).toBe(404);
   });
+
+  test("updates a tag's name (200)", async () => {
+    const id = await seedTag({ orgId: ORG_ID, name: "express" });
+    const res = await app.request(`/api/tags/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "priority" }),
+    });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ name: "priority" });
+  });
+
+  test("409 creating a tag whose name already exists in the org", async () => {
+    await seedTag({ orgId: ORG_ID, name: "fragile" });
+    const res = await app.request("/api/tags", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "fragile" }),
+    });
+    expect(res.status).toBe(409);
+  });
 });
