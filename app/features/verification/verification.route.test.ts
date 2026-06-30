@@ -7,6 +7,7 @@ import { loginAs } from "../../../test/helpers/auth";
 import {
   resetDb,
   seedOrg,
+  seedUser,
   seedUserMember,
   seedVerification,
 } from "../../../test/helpers/db";
@@ -57,7 +58,10 @@ describe("GET /api/verification/pending (admin only)", () => {
 });
 
 describe("PATCH /api/verification/:orgId/review (admin only)", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    // The reviewer id is written to organization_verification.reviewed_by
+    // (FK → user.id), so the admin must exist as a real user row.
+    await seedUser({ userId: ADMIN_ID, role: "admin" });
     loginAs({ userId: ADMIN_ID, orgId: null, role: "admin" });
   });
 

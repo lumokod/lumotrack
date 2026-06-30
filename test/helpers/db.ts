@@ -47,6 +47,21 @@ export async function seedOrg(opts: {
   });
 }
 
+/** Seed a bare user row (no org membership). `role` is the platform role. */
+export async function seedUser(opts: {
+  userId: string;
+  role?: string;
+  email?: string;
+}) {
+  await db.insert(user).values({
+    id: opts.userId,
+    name: "Test User",
+    email: opts.email ?? `${opts.userId}@test.dev`,
+    emailVerified: true,
+    role: opts.role ?? "user",
+  });
+}
+
 /** Seed a user and make them a member of an org (default role: owner). */
 export async function seedUserMember(opts: {
   userId: string;
