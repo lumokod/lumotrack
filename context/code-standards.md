@@ -41,6 +41,7 @@
 - Throw `new HTTPException(404, { message: "..." })` for not-found, `400` for invalid state transitions
 - For geometry columns, use a `format*` util to strip raw PostGIS values before returning (see `shipments.util.ts`)
 - Use `db.transaction()` for writes that span multiple tables
+- For inserts that can hit a `unique` constraint, catch the error and use `isUniqueViolation(error)` from `@/shared/db.util` to return a clean `409` instead of a 500. Don't check `error.code` directly — Drizzle wraps the driver error, so the code can be on `error.cause`
 
 ### Adding a new RBAC resource
 
@@ -84,9 +85,9 @@ Migrations do **not** enable the PostGIS extension — it must already exist in 
 - `@/lib/auth` — sessions are injected, not real. Use `loginAs()` / `logout()` / `denyPermission()` from `test/helpers/auth.ts` to set the current user. Don't test Better Auth itself (maintained lib); **do** test that routes enforce `sessionMiddleware` / `requirePermission` / `requireVerifiedOrg`.
 - `@/lib/queue` — BullMQ opens a Redis connection on import, so it's stubbed; tests need no Redis. (Resend/Twilio only construct clients on import, so mock them only when testing flows that actually send.)
 
-**Helpers** (`test/helpers/db.ts`): `resetDb()` truncates all tables; `seedOrg()` / `seedUserMember()` insert fixtures. Call `resetDb()` in `beforeEach` for isolation.
+**Helpers** (`test/helpers/db.ts`): `resetDb()` truncates all tables for isolation — call it in `beforeEach`. Seed fixtures with `seedOrg`, `seedUser`, `seedUserMember`, `seedDriver` (user + driver member + profile), `seedAddress`, `seedShipment`, `seedTag`, `seedVerification`.
 
-**Writing an endpoint test:** the mocks are already in place — just `loginAs(...)`, seed rows, then `app.request(path, { method, body })` and assert on `res.status` / `await res.json()`. See `app/features/shipments/shipments.route.test.ts`.
+**Writing an endpoint test:** the mocks are already in place — just `loginAs(...)`, seed rows, then `app.request(path, { method, body })` and assert on `res.status` / `await res.json()`. See `app/features/shipments/shipments.route.test.ts`. Suites currently cover shipments, events, reviews, tags, verification, addresses, and drivers (auth gating, business-logic branches, cross-org isolation, pagination). The AI routes are not yet tested (they need the model provider mocked).
 
 **Commands:**
 
