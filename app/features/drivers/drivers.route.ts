@@ -14,9 +14,16 @@ import {
   toggleAvailability,
 } from "./drivers.service";
 import type { DriverLocationCreate } from "./drivers.types";
+import { parseTrackingPing } from "./drivers.validation";
 import { paginationSchema } from "@/features/shipments/shipments.validation";
 import { idParamSchema } from "@/shared/validations/common";
 import { z } from "zod";
+import { upgradeWebSocket } from "hono/bun";
+import { publishTracking } from "@/lib/tracking";
+
+// Pings arriving faster than this are dropped — GPS clients have no business
+// updating more than once per second.
+const MIN_PING_INTERVAL_MS = 1_000;
 
 export const driversRoutes = new Hono<AppEnv>();
 
@@ -54,6 +61,50 @@ driversRoutes.delete(
     await removeLocation(user.id, c.req.param("locationId"));
     return c.body(null, 204);
   },
+);
+
+driversRoutes.get(
+  "/me/tracking",
+  requirePermission({ location: ["create"] }),
+  upgradeWebSocket((c) => {
+    const user: AppEnv["Variables"]["user"] = c.get("user");
+    const driverId = user.id;
+    let lastPingAt = 0;
+
+    return {
+      onMessage(event, ws) {
+        const now = Date.now();
+        if (now - lastPingAt < MIN_PING_INTERVAL_MS) return;
+
+        const ping = parseTrackingPing(event.data);
+        if (!ping) {
+          ws.send(
+            JSON.stringify({
+              type: "error",
+              message: "Invalid ping — expected { latitude, longitude }",
+            }),
+          );
+          return;
+        }
+
+        lastPingAt = now;
+        void publishTracking({
+          type: "location",
+          driverId,
+          latitude: ping.latitude,
+          longitude: ping.longitude,
+          timestamp: new Date().toISOString(),
+        });
+      },
+      onClose() {
+        void publishTracking({
+          type: "offline",
+          driverId,
+          timestamp: new Date().toISOString(),
+        });
+      },
+    };
+  }),
 );
 
 driversRoutes.get(

@@ -14,6 +14,7 @@
 - **Hono context:** after `sessionMiddleware`, use `c.get("user").id` for the current user's ID and `c.get("session").activeOrganizationId!` for the active org ID
 - **Email templates:** React Email `.tsx` files in `app/lib/mail/templates/` must have `/** @jsxImportSource react */` as the first line — this overrides the global `hono/jsx` tsconfig setting. Never remove this pragma; linters may strip it but it is load-bearing
 - **Background jobs:** never send emails or SMS inline from a service. Always enqueue via `addNotification(data)` (from `@/lib/queue`) after the DB transaction commits — never inside `db.transaction()`. Add new job types to `NotificationJobData` in `app/lib/queue/jobs.ts` and handle them in `app/lib/queue/worker.ts`. `addNotification` derives the BullMQ job name from `data.type` automatically — never call `notificationQueue.add(...)` directly
+- **WebSocket endpoints:** use `upgradeWebSocket` from `hono/bun` as the last handler in a normal middleware chain (`sessionMiddleware` → `requireActiveOrg` → `requirePermission` all run before the upgrade). Per-connection authorization that needs the DB goes **inside the async `createEvents` callback** — Hono awaits it before upgrading, so a thrown `HTTPException` still returns a regular 4xx. The entry point (`app/index.ts`) must keep exporting `websocket` from `hono/bun` next to `fetch`, or upgrades break. Redis pub/sub for tracking lives in `@/lib/tracking` — like `@/lib/queue`, it opens connections at import time and is mocked in tests
 
 ---
 
@@ -84,8 +85,11 @@ Migrations do **not** enable the PostGIS extension — it must already exist in 
 
 - `@/lib/auth` — sessions are injected, not real. Use `loginAs()` / `logout()` / `denyPermission()` from `test/helpers/auth.ts` to set the current user. Don't test Better Auth itself (maintained lib); **do** test that routes enforce `sessionMiddleware` / `requirePermission` / `requireVerifiedOrg`.
 - `@/lib/queue` — BullMQ opens a Redis connection on import, so it's stubbed; tests need no Redis. (Resend/Twilio only construct clients on import, so mock them only when testing flows that actually send.)
+- `@/lib/tracking` — same reason (Redis on import). Stubbed with the **spy mocks** in `test/helpers/tracking.ts` (`trackingMocks`), so tests can assert publishes/subscriptions and stub a last-known position; call `resetTrackingMocks()` in `beforeEach`.
 
 **Helpers** (`test/helpers/db.ts`): `resetDb()` truncates all tables for isolation — call it in `beforeEach`. Seed fixtures with `seedOrg`, `seedUser`, `seedUserMember`, `seedDriver` (user + driver member + profile), `seedAddress`, `seedShipment`, `seedTag`, `seedVerification`.
+
+**WebSocket endpoints** are tested without real sockets (`test/helpers/ws.ts`): `requestUpgrade(path)` sends the request through the full middleware chain with a fake Bun server that captures the WS event listeners — assert on `response.status` for auth/authorization branches, then invoke `events.onMessage/onOpen/onClose` directly with `fakeSocket()` to test handler logic against `trackingMocks`.
 
 **Writing an endpoint test:** the mocks are already in place — just `loginAs(...)`, seed rows, then `app.request(path, { method, body })` and assert on `res.status` / `await res.json()`. See `app/features/shipments/shipments.route.test.ts`. Suites currently cover shipments, events, reviews, tags, verification, addresses, and drivers (auth gating, business-logic branches, cross-org isolation, pagination). The AI routes are not yet tested (they need the model provider mocked).
 

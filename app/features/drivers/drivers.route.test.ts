@@ -1,8 +1,10 @@
 import { describe, test, expect, beforeEach } from "bun:test";
 import { uuidv7 } from "uuidv7";
 import app from "@/core/app";
-import { loginAs } from "../../../test/helpers/auth";
+import { loginAs, logout, denyPermission } from "../../../test/helpers/auth";
 import { resetDb, seedOrg, seedDriver, seedShipment } from "../../../test/helpers/db";
+import { trackingMocks, resetTrackingMocks } from "../../../test/helpers/tracking";
+import { requestUpgrade, fakeSocket } from "../../../test/helpers/ws";
 
 const ORG_ID = "org_test_1";
 const DRIVER_ID = "driver_test_1";
@@ -77,5 +79,78 @@ describe("driver locations", () => {
       method: "DELETE",
     });
     expect(res.status).toBe(404);
+  });
+});
+
+describe("GET /api/drivers/me/tracking (WS)", () => {
+  beforeEach(() => {
+    resetTrackingMocks();
+  });
+
+  function ping(overrides: Record<string, unknown> = {}) {
+    return new MessageEvent("message", {
+      data: JSON.stringify({ latitude: 33.9, longitude: 35.5, ...overrides }),
+    });
+  }
+
+  test("401 when unauthenticated", async () => {
+    logout();
+    const { response } = await requestUpgrade("/api/drivers/me/tracking");
+    expect(response.status).toBe(401);
+  });
+
+  test("403 when permission denied", async () => {
+    denyPermission();
+    const { response } = await requestUpgrade("/api/drivers/me/tracking");
+    expect(response.status).toBe(403);
+  });
+
+  test("upgrades and publishes a valid ping on the driver's channel", async () => {
+    const { response, events } = await requestUpgrade("/api/drivers/me/tracking");
+    expect(response.status).toBe(200);
+
+    const { socket } = fakeSocket();
+    events!.onMessage!(ping(), socket);
+
+    expect(trackingMocks.publishTracking).toHaveBeenCalledTimes(1);
+    expect(trackingMocks.publishTracking.mock.calls[0][0]).toMatchObject({
+      type: "location",
+      driverId: DRIVER_ID,
+      latitude: 33.9,
+      longitude: 35.5,
+    });
+  });
+
+  test("rejects a malformed ping without publishing", async () => {
+    const { events } = await requestUpgrade("/api/drivers/me/tracking");
+    const { sent, socket } = fakeSocket();
+
+    events!.onMessage!(ping({ latitude: 999 }), socket);
+
+    expect(trackingMocks.publishTracking).not.toHaveBeenCalled();
+    expect(JSON.parse(sent[0])).toMatchObject({ type: "error" });
+  });
+
+  test("drops pings arriving faster than the rate guard", async () => {
+    const { events } = await requestUpgrade("/api/drivers/me/tracking");
+    const { socket } = fakeSocket();
+
+    events!.onMessage!(ping(), socket);
+    events!.onMessage!(ping(), socket); // immediate second ping — dropped
+
+    expect(trackingMocks.publishTracking).toHaveBeenCalledTimes(1);
+  });
+
+  test("publishes an offline message when the socket closes", async () => {
+    const { events } = await requestUpgrade("/api/drivers/me/tracking");
+    const { socket } = fakeSocket();
+
+    events!.onClose!(new CloseEvent("close"), socket);
+
+    expect(trackingMocks.publishTracking).toHaveBeenCalledTimes(1);
+    expect(trackingMocks.publishTracking.mock.calls[0][0]).toMatchObject({
+      type: "offline",
+      driverId: DRIVER_ID,
+    });
   });
 });

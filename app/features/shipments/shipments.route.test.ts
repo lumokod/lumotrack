@@ -9,6 +9,11 @@ import {
   seedAddress,
   seedShipment,
 } from "../../../test/helpers/db";
+import {
+  trackingMocks,
+  resetTrackingMocks,
+} from "../../../test/helpers/tracking";
+import { requestUpgrade, fakeSocket } from "../../../test/helpers/ws";
 
 const ORG_ID = "org_test_1";
 const USER_ID = "user_test_1";
@@ -234,5 +239,127 @@ describe("GET /api/shipments pagination", () => {
     // No overlap between the two pages.
     const ids = new Set(page1.data.map((s: { id: string }) => s.id));
     expect(ids.has(page2.data[0].id)).toBe(false);
+  });
+});
+
+describe("GET /api/shipments/:id/tracking (WS)", () => {
+  const DRIVER_ID = "driver_test_1";
+
+  beforeEach(async () => {
+    resetTrackingMocks();
+    await seedDriver({ userId: DRIVER_ID, orgId: ORG_ID });
+  });
+
+  function seedTrackableShipment(
+    overrides: Parameters<typeof seedShipment>[0] = { orgId: ORG_ID },
+  ) {
+    return seedShipment({
+      orgId: ORG_ID,
+      status: "in_transit",
+      driverUserId: DRIVER_ID,
+      ...overrides,
+    });
+  }
+
+  test("401 when unauthenticated", async () => {
+    const shipment = await seedTrackableShipment();
+    logout();
+    const { response } = await requestUpgrade(
+      `/api/shipments/${shipment.id}/tracking`,
+    );
+    expect(response.status).toBe(401);
+  });
+
+  test("403 when permission denied", async () => {
+    const shipment = await seedTrackableShipment();
+    denyPermission();
+    const { response } = await requestUpgrade(
+      `/api/shipments/${shipment.id}/tracking`,
+    );
+    expect(response.status).toBe(403);
+  });
+
+  test("404 for a shipment belonging to another org", async () => {
+    await seedOrg({ id: "org_other" });
+    const shipment = await seedShipment({
+      orgId: "org_other",
+      status: "in_transit",
+    });
+    const { response } = await requestUpgrade(
+      `/api/shipments/${shipment.id}/tracking`,
+    );
+    expect(response.status).toBe(404);
+  });
+
+  test("400 when the shipment has no assigned driver", async () => {
+    const shipment = await seedShipment({ orgId: ORG_ID });
+    const { response } = await requestUpgrade(
+      `/api/shipments/${shipment.id}/tracking`,
+    );
+    expect(response.status).toBe(400);
+  });
+
+  test("400 when the shipment status is not trackable", async () => {
+    const shipment = await seedTrackableShipment({
+      orgId: ORG_ID,
+      status: "delivered",
+    });
+    const { response } = await requestUpgrade(
+      `/api/shipments/${shipment.id}/tracking`,
+    );
+    expect(response.status).toBe(400);
+  });
+
+  test("sends the last-known snapshot and relays live updates", async () => {
+    const lastKnown = {
+      type: "location" as const,
+      driverId: DRIVER_ID,
+      latitude: 33.9,
+      longitude: 35.5,
+      timestamp: new Date().toISOString(),
+    };
+    trackingMocks.getLastKnownLocation.mockImplementation(
+      async () => lastKnown,
+    );
+
+    const shipment = await seedTrackableShipment();
+    const { response, events } = await requestUpgrade(
+      `/api/shipments/${shipment.id}/tracking`,
+    );
+    expect(response.status).toBe(200);
+
+    const { sent, socket } = fakeSocket();
+    await events!.onOpen!(new Event("open"), socket);
+
+    // Snapshot delivered immediately on connect.
+    expect(JSON.parse(sent[0])).toMatchObject({
+      type: "location",
+      driverId: DRIVER_ID,
+    });
+
+    // The relay handler registered for the assigned driver forwards updates.
+    expect(trackingMocks.subscribeToDriver).toHaveBeenCalledTimes(1);
+    const [subscribedDriverId, relay] =
+      trackingMocks.subscribeToDriver.mock.calls[0];
+    expect(subscribedDriverId).toBe(DRIVER_ID);
+
+    relay({ ...lastKnown, latitude: 34.0 });
+    expect(JSON.parse(sent[1])).toMatchObject({ latitude: 34.0 });
+  });
+
+  test("unsubscribes when the watcher disconnects", async () => {
+    const shipment = await seedTrackableShipment();
+    const { events } = await requestUpgrade(
+      `/api/shipments/${shipment.id}/tracking`,
+    );
+
+    const { socket } = fakeSocket();
+    await events!.onOpen!(new Event("open"), socket);
+    await events!.onClose!(new CloseEvent("close"), socket);
+
+    expect(trackingMocks.unsubscribeFromDriver).toHaveBeenCalledTimes(1);
+    expect(trackingMocks.unsubscribeFromDriver.mock.calls[0][0]).toBe(
+      DRIVER_ID,
+    );
   });
 });

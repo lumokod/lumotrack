@@ -109,6 +109,32 @@ export async function getShipmentWithTimeline(
   };
 }
 
+const TRACKABLE_STATUSES: ShipmentStatus[] = [
+  "assigned",
+  "picked_up",
+  "in_transit",
+  "out_for_delivery",
+];
+
+/** Resolve which driver a seller may live-track for this shipment, or throw. */
+export async function getTrackedDriverId(shipmentId: string, orgId: string) {
+  const shipment = await getShipmentById(shipmentId, orgId);
+
+  if (!shipment.driverUserId) {
+    throw new HTTPException(400, {
+      message: "Shipment has no assigned driver to track",
+    });
+  }
+
+  if (!TRACKABLE_STATUSES.includes(shipment.status)) {
+    throw new HTTPException(400, {
+      message: `Live tracking is not available for a ${shipment.status} shipment`,
+    });
+  }
+
+  return shipment.driverUserId;
+}
+
 export async function createShipment(data: CreateShipmentInput, orgId: string) {
   const [shipment] = await db
     .insert(shipments)

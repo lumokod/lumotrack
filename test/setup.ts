@@ -16,6 +16,14 @@ mock.module("@/lib/auth", () => ({
   },
 }));
 
+// --- Live tracking / Redis ---------------------------------------------------
+// `@/lib/tracking/client` opens two Redis connections at import time. Routes
+// import the pub/sub surface, so stub it; the spies live in helpers/tracking
+// so tests can assert on publishes and captured subscription handlers.
+import { trackingMocks } from "./helpers/tracking";
+
+mock.module("@/lib/tracking", () => trackingMocks);
+
 // --- Queue / Redis -----------------------------------------------------------
 // `@/lib/queue/client` calls `new Queue(...)` at import time, which opens a
 // Redis connection. events.service imports it, so importing the app would hang

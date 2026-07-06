@@ -4,6 +4,7 @@ import {
   getShipmentWithTimeline,
   getShipmentsByStatus,
   getShipmentsByTags,
+  getTrackedDriverId,
   createShipment,
   updateShipment,
   assignDriver,
@@ -29,6 +30,13 @@ import { sValidator } from "@hono/standard-validator";
 import { idParamSchema } from "@/shared/validations/common";
 import { getShipmentTags, setShipmentTags } from "@/features/tags/tags.service";
 import { setShipmentTagsSchema } from "@/features/tags/tags.validation";
+import { upgradeWebSocket } from "hono/bun";
+import {
+  getLastKnownLocation,
+  subscribeToDriver,
+  unsubscribeFromDriver,
+  type TrackingHandler,
+} from "@/lib/tracking";
 
 export const shipmentsRoutes = new Hono<AppEnv>();
 
@@ -87,6 +95,43 @@ shipmentsRoutes.get(
     const shipment = await getShipmentWithTimeline(id, organizationId);
     return c.json(shipment);
   },
+);
+
+shipmentsRoutes.get(
+  "/:id/tracking",
+  requirePermission({ shipment: ["read"] }),
+  sValidator("param", idParamSchema),
+  // Authorization runs inside createEvents, which Hono awaits *before*
+  // upgrading — a thrown HTTPException still returns a normal error response.
+  upgradeWebSocket(async (c) => {
+    const session: AppEnv["Variables"]["session"] = c.get("session");
+    const driverId = await getTrackedDriverId(
+      c.req.param("id")!,
+      session.activeOrganizationId!,
+    );
+
+    let relay: TrackingHandler | undefined;
+    let closed = false;
+
+    return {
+      async onOpen(_event, ws) {
+        relay = (message) => ws.send(JSON.stringify(message));
+
+        // Snapshot first so the watcher sees a position immediately, then
+        // live updates take over.
+        const lastKnown = await getLastKnownLocation(driverId);
+        if (lastKnown) ws.send(JSON.stringify(lastKnown));
+
+        await subscribeToDriver(driverId, relay);
+        // The socket may have closed while we were subscribing.
+        if (closed) await unsubscribeFromDriver(driverId, relay);
+      },
+      async onClose() {
+        closed = true;
+        if (relay) await unsubscribeFromDriver(driverId, relay);
+      },
+    };
+  }),
 );
 
 shipmentsRoutes.post(

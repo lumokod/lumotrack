@@ -47,6 +47,10 @@ app/
       jobs.ts     # NotificationJobData discriminated union type
       worker.ts   # startNotificationWorker — processes email and SMS jobs
       index.ts    # re-exports
+    tracking/
+      client.ts   # Redis pub/sub bus for live driver tracking + last-known position (TTL)
+      messages.ts # TrackingMessage discriminated union (location | offline)
+      index.ts    # re-exports
   shared/
     middleware/   # auth.middleware.ts — session + RBAC
     validations/  # common.ts — shared Zod schemas
@@ -65,6 +69,8 @@ All routes are prefixed `/api`. Protected routes require a valid session (via `s
 | `/api/drivers/me/locations`   | session + org                   | POST (add location), DELETE /:locationId (remove)                                                       |
 | `/api/drivers/me/shipments`   | session + org                   | GET (paginated list), GET /:id                                                                          |
 | `/api/drivers/me/availability`| session + org                   | PATCH — driver toggles isAvailable on their profile                                                     |
+| `/api/drivers/me/tracking`    | session + org + `location:create` | GET (**WebSocket**) — driver streams `{ latitude, longitude }` pings for live tracking                |
+| `/api/shipments/:id/tracking` | session + org + `shipment:read` | GET (**WebSocket**) — seller watches the assigned driver's live position for one shipment              |
 | `/api/shipments`              | session + org                   | GET (paginated), GET /status/:status, GET /tags?tagIds=a,b (filter by tags, OR match), GET /:id (includes `tags[]`), POST, PATCH /:id, PATCH /:id/cancel, PATCH /:id/assign |
 | `/api/shipments/:id/tags`     | session + org                   | GET (`tag:read` — shipment's tags), PUT (`tag:update` — replace the shipment's tag set, idempotent)      |
 | `/api/shipments/:id/events`   | session + org                   | POST (log checkpoint → updates shipment status + enqueues notifications), GET (event history)            |
@@ -101,7 +107,7 @@ All domain entities use **uuidv7** as primary keys. Junction tables (`shipment_t
 - When a driver logs `out_for_delivery`: a 6-digit `deliveryCode` is generated, stored on the shipment, and included in the SMS to the client. The client shares this code with the driver to confirm delivery.
 - When a driver logs `delivered`: `confirmationCode` is required in the request body and must match `shipment.deliveryCode`. On success the code is cleared from the shipment.
 - Event→status mapping: `departed`→`picked_up`, `arrived`→`in_transit`, `out_for_delivery`→`out_for_delivery`, `delivered`→`delivered`. Other events are checkpoints only.
-- Live driver tracking is done via `driverLocations` (updated in real-time), not via events.
+- **Live driver tracking** is ephemeral — WebSockets + Redis, nothing in Postgres. A driver opens `GET /api/drivers/me/tracking` (WS upgrade; session cookie auth like any route) and streams pings; each valid ping is stored as the driver's last-known position in Redis (`tracking:driver:<userId>:last`, 60s TTL, refreshed per ping) and published on the `tracking:driver:<userId>` pub/sub channel (`app/lib/tracking/`). A seller opens `GET /api/shipments/:id/tracking`; authorization runs inside the async `createEvents` callback **before** the upgrade (org owns the shipment, a driver is assigned, status is `assigned`→`out_for_delivery`), so failures return normal 4xx responses. On connect the watcher gets the last-known snapshot, then relayed live updates; when the driver socket closes, an `offline` message is published and the last-known key deleted. Pings faster than 1/s are dropped. Authorization is resolved at connect time — reassignment/delivery mid-watch just makes the stream go quiet. The `driverLocations` table is unrelated to live tracking (it stores the driver's saved/labeled points); events are unrelated too (history log).
 - Events are immutable — no update or delete endpoints.
 - Reviews: when a shipment is logged `delivered`, `enqueueNotifications` also enqueues a review request (email if `clientContactEmail`, SMS if `clientContactPhone`) containing a signed review link. The customer is not a logged-in user, so the link is authorized by an **HMAC token** over the `shipmentId` (`review-link.ts`, signed with `BETTER_AUTH_SECRET`) rather than a session — stateless, no token is persisted. The public `POST /api/reviews` verifies the token, requires the shipment to be `delivered`, and the `unique(shipmentId)` constraint enforces a single review per shipment. Link base is `BETTER_AUTH_URL`.
 - Tags: org-scoped labels attached to shipments many-to-many. Names are normalized to lowercase (Zod `.trim().toLowerCase()`) so the `unique(organizationId, name)` constraint is effectively case-insensitive; duplicate-name inserts surface as `409`. `PUT /api/shipments/:id/tags` uses **set semantics** — the body's `tagIds` replaces the shipment's whole tag set (send `[]` to clear). Filtering via `GET /api/shipments/tags?tagIds=a,b` is **OR** match, implemented as a subquery on `shipments.id` (not a join) to keep one row per shipment and preserve cursor pagination. New orgs get a seeded starter catalog (`express`, `fragile`, `temperature_controlled`, `gift`, `documents`, `return`).
