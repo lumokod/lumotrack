@@ -101,8 +101,7 @@ shipmentsRoutes.get(
   "/:id/tracking",
   requirePermission({ shipment: ["read"] }),
   sValidator("param", idParamSchema),
-  // Authorization runs inside createEvents, which Hono awaits *before*
-  // upgrading — a thrown HTTPException still returns a normal error response.
+  // Hono awaits createEvents before upgrading, so a throw here is a normal 4xx.
   upgradeWebSocket(async (c) => {
     const session: AppEnv["Variables"]["session"] = c.get("session");
     const driverId = await getTrackedDriverId(
@@ -117,8 +116,7 @@ shipmentsRoutes.get(
       async onOpen(_event, ws) {
         relay = (message) => ws.send(JSON.stringify(message));
 
-        // Snapshot first so the watcher sees a position immediately, then
-        // live updates take over.
+        // Snapshot first, then live updates take over.
         const lastKnown = await getLastKnownLocation(driverId);
         if (lastKnown) ws.send(JSON.stringify(lastKnown));
 

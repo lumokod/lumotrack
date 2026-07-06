@@ -21,6 +21,22 @@ rule is about data/object args, not numbers.
 code written for this user. Also codified in
 [code-standards.md](code-standards.md) Conventions.
 
+## Comments in code: one line max
+
+_Type: feedback_
+
+Never write multi-line comment blocks in code files. Condense every comment to a
+single line stating the one non-obvious constraint; move longer rationale into the
+`context/*.md` files (optionally leaving a `see <file>.md → <section>` pointer).
+
+**Why:** The user reviewed the live-tracking feature (2026-07-06), saw multi-line
+comments in code files, and asked for them all to be reduced to one-liners with the
+context moved to md files — "never write a lot of comments in a code file."
+
+**How to apply:** Before finishing any change, scan for consecutive `//` lines and
+condense. Applies to source, tests, and helpers alike. Also codified in
+[code-standards.md](code-standards.md) Conventions.
+
 ## Persist notes in context files, not assistant memory
 
 _Type: feedback_

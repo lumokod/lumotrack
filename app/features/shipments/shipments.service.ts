@@ -64,9 +64,7 @@ export async function getShipmentsByTags(
     });
   }
 
-  // ANY/OR semantics: a shipment matches if it carries at least one of the
-  // tags. Subquery (not a join) keeps one row per shipment even when several
-  // tags match, and preserves the id-based cursor pagination.
+  // OR match via subquery, not a join — see architecture.md → Design notes → Tags.
   return paginateShipments(
     [
       eq(shipments.organizationId, orgId),

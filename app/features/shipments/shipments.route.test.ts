@@ -121,8 +121,7 @@ describe("PATCH /api/shipments/:id/assign", () => {
     });
   }
 
-  // A shipment that satisfies the pre-assignment requirements (pickup address
-  // + a client contact), so each negative test can drop exactly one.
+  // Satisfies every pre-assignment requirement so each negative test can drop exactly one.
   async function readyShipment(overrides = {}) {
     const originAddressId = await seedAddress({ orgId: ORG_ID });
     return seedShipment({

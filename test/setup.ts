@@ -2,9 +2,7 @@ import { mock } from "bun:test";
 import { authState } from "./helpers/auth";
 
 // --- Auth boundary -----------------------------------------------------------
-// Replace the whole Better Auth instance so endpoint tests control the session
-// without signing up / verifying email. Only the surface the app touches at
-// runtime is implemented (`api.getSession`, `api.hasPermission`, `handler`).
+// Tests inject sessions via helpers/auth — see code-standards.md → Tests → Mocked boundaries.
 mock.module("@/lib/auth", () => ({
   auth: {
     handler: async () =>
@@ -17,17 +15,13 @@ mock.module("@/lib/auth", () => ({
 }));
 
 // --- Live tracking / Redis ---------------------------------------------------
-// `@/lib/tracking/client` opens two Redis connections at import time. Routes
-// import the pub/sub surface, so stub it; the spies live in helpers/tracking
-// so tests can assert on publishes and captured subscription handlers.
+// Opens Redis connections at import time (like the queue); spies live in helpers/tracking.
 import { trackingMocks } from "./helpers/tracking";
 
 mock.module("@/lib/tracking", () => trackingMocks);
 
 // --- Queue / Redis -----------------------------------------------------------
-// `@/lib/queue/client` calls `new Queue(...)` at import time, which opens a
-// Redis connection. events.service imports it, so importing the app would hang
-// without Redis. Stub the surface the app imports.
+// BullMQ opens a Redis connection at import time — stub the surface the app uses.
 mock.module("@/lib/queue", () => ({
   addNotification: async () => undefined,
   notificationQueue: { add: async () => undefined },

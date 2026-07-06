@@ -5,6 +5,7 @@
 - **Feature structure:** `*.route.ts` / `*.service.ts` / `*.types.ts` / `*.validation.ts` / `*.util.ts`
 - **Imports:** Use the `@/` path alias (e.g. `@/core/db`, `@/features/shipments/shipments.service`)
 - **Naming — full words for data/object args:** when a function/callback parameter represents a data object or entity, name it with the full word, not an abbreviation — `data` not `d`, `error` not `e`, `request` not `req`. Applies to arrow-function callbacks too (e.g. `(data) => sendEmail(data.email)`). This does **not** apply to numeric indices — `i`, `idx`, `j` are fine for loop counters
+- **Comments — one line max:** never write multi-line comment blocks in code files. A comment states one non-obvious constraint in a single line; anything longer (rationale, design trade-offs, protocol behavior) belongs in the `context/*.md` files — point to it with `see <file>.md → <section>` if a pointer helps. Section-header lines in `test/setup.ts` (`// --- X ---`) don't count
 - **Errors:** Use `HTTPException` for all error responses (consistent status + message)
 - **Validation:** All request inputs (body, query, params) validated with Zod + `@hono/standard-validator`
 - **DB transactions:** Use `db.transaction()` for multi-table atomic writes
@@ -83,7 +84,7 @@ Migrations do **not** enable the PostGIS extension — it must already exist in 
 
 **Mocked boundaries** (`test/setup.ts`, loaded via the `bunfig.toml` preload — runs before the app is imported):
 
-- `@/lib/auth` — sessions are injected, not real. Use `loginAs()` / `logout()` / `denyPermission()` from `test/helpers/auth.ts` to set the current user. Don't test Better Auth itself (maintained lib); **do** test that routes enforce `sessionMiddleware` / `requirePermission` / `requireVerifiedOrg`.
+- `@/lib/auth` — sessions are injected, not real; only the surface the app touches is implemented (`api.getSession`, `api.hasPermission`, `handler`). Use `loginAs()` / `logout()` / `denyPermission()` from `test/helpers/auth.ts` to set the current user. Don't test Better Auth itself (maintained lib); **do** test that routes enforce `sessionMiddleware` / `requirePermission` / `requireVerifiedOrg`.
 - `@/lib/queue` — BullMQ opens a Redis connection on import, so it's stubbed; tests need no Redis. (Resend/Twilio only construct clients on import, so mock them only when testing flows that actually send.)
 - `@/lib/tracking` — same reason (Redis on import). Stubbed with the **spy mocks** in `test/helpers/tracking.ts` (`trackingMocks`), so tests can assert publishes/subscriptions and stub a last-known position; call `resetTrackingMocks()` in `beforeEach`.
 

@@ -5,9 +5,7 @@ import type {
   TrackingMessage,
 } from "@/lib/tracking/messages";
 
-// Spy mocks wired into `mock.module("@/lib/tracking", ...)` in `test/setup.ts`
-// (the real module opens Redis connections at import time). Tests import these
-// to assert on publishes/subscriptions or stub a last-known position.
+// Spy stand-ins for `@/lib/tracking`, wired in `test/setup.ts` — see code-standards.md → Tests.
 export const trackingMocks = {
   publishTracking: mock(async (_message: TrackingMessage) => undefined),
   getLastKnownLocation: mock(

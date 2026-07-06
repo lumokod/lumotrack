@@ -21,8 +21,7 @@ import { z } from "zod";
 import { upgradeWebSocket } from "hono/bun";
 import { publishTracking } from "@/lib/tracking";
 
-// Pings arriving faster than this are dropped — GPS clients have no business
-// updating more than once per second.
+// Pings arriving faster than this are dropped.
 const MIN_PING_INTERVAL_MS = 1_000;
 
 export const driversRoutes = new Hono<AppEnv>();

@@ -6,12 +6,10 @@ import type {
   TrackingMessage,
 } from "./messages";
 
-// How long a driver's last-known position stays servable to newly connecting
-// watchers. Refreshed on every ping, so it only expires when pings stop.
+// Refreshed on every ping — only expires when pings stop.
 const LAST_KNOWN_TTL_SECONDS = 60;
 
-// A Redis connection in subscriber mode cannot run regular commands, so
-// pub/sub listening gets its own connection alongside the command client.
+// Subscriber-mode Redis connections can't run regular commands, so pub/sub gets its own.
 const redis = new Redis(env.REDIS_URL);
 const redisSubscriber = new Redis(env.REDIS_URL);
 
